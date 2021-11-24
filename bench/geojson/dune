@@ -1,0 +1,9 @@
+(executable
+ (name bench)
+ (libraries bechamel notty.unix bechamel-notty geojson ezjsonm))
+
+(rule
+ (alias bench)
+ (deps ./bench.exe)
+ (action
+  (run ./bench.exe)))

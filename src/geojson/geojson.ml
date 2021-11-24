@@ -164,7 +164,7 @@ module Make (J : S.JSON) = struct
         J.obj
           [
             ("type", J.string typ);
-            ("coordinates", J.array LineString.to_json positions);
+            ("coordinates", J.array (J.array (J.array J.float)) positions);
           ]
     end
 

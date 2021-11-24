@@ -34,6 +34,9 @@ end
 
 module Geojson = Geojson.Make (Ezjsonm_parser)
 
+let ezjsonm =
+  Alcotest.of_pp (fun ppf t -> Fmt.pf ppf "%s" (Ezjsonm.value_to_string t))
+
 let (msg : [ `Msg of string ] Alcotest.testable) =
   Alcotest.of_pp (fun ppf (`Msg m) -> Fmt.pf ppf "%s" m)
 
@@ -42,6 +45,7 @@ let test_multi_line () =
   let s = read_file "files/valid/multilinestring.json" in
   let json = Ezjsonm.value_from_string s in
   let coords = Geometry.MultiLineString.of_json json in
+  let json' = Result.map Geometry.MultiLineString.to_json coords in
   let t =
     Result.map
       (fun v ->
@@ -59,8 +63,9 @@ let test_multi_line () =
          [| [| 170.0; 45.0 |]; [| 180.0; 45.0 |] |];
          [| [| -180.0; 45.0 |]; [| -170.0; 45.0 |] |];
        |])
-    t
+    t;
+  Alcotest.(check (result ezjsonm msg)) "same json" (Ok json) json'
 
 let () =
   Alcotest.run "geojson"
-    [ ("geometry", [ Alcotest.test_case "" `Quick test_multi_line ]) ]
+    [ ("geometry", [ Alcotest.test_case "multi-line" `Quick test_multi_line ]) ]
