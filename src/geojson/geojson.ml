@@ -1,98 +1,242 @@
 module S = S
 
+let ( let* ) = Result.bind
 
-module Position = struct
-  (* We use a float array internally for performance *)
-  type t = float array 
+let decode_or_err f v =
+  match f v with Ok x -> x | Error (`Msg m) -> failwith m
 
-  let longitude t = t.(0)
-  let latitude t = t.(1)
+module Make (J : S.JSON) = struct
+  type json = J.t
+  type t = unit
 
-  let altitude t =
-    try Some t.(2) with _ -> None
+  let of_json _json = Ok ()
 
-  let equal l1 l2 =
-    let n1 = Array.length l1
-    and n2 = Array.length l2 in
-    if n1 <> n2 then false
-    else let rec loop i =
-      if i = n1 then true
-      else if Float.equal (Array.unsafe_get l1 i) (Array.unsafe_get l2 i) then loop (succ i)
-      else false in
-    loop 0
-end
+  module Geometry = struct
+    type json = J.t
 
-module Point = struct 
-  type t = Position.t
+    module Position = struct
+      (* We use a float array internally for performance *)
+      type t = float array
 
-  let position = Fun.id
-end
+      let long t = t.(0)
+      let lat t = t.(1)
+      let altitude t = try Some t.(2) with _ -> None
 
-module MultiPoint = struct
-  type t = Position.t array
-  let coordinates = Fun.id
-end
+      let v ?altitude ~long ~lat () =
+        match altitude with
+        | Some f -> [| long; lat; f |]
+        | None -> [| long; lat |]
 
-module LineString = struct
-  type t = Position.t array
-  let coordinates = Fun.id
-end
+      let equal l1 l2 =
+        let n1 = Array.length l1 and n2 = Array.length l2 in
+        if n1 <> n2 then false
+        else
+          let rec loop i =
+            if i = n1 then true
+            else if Float.equal (Array.unsafe_get l1 i) (Array.unsafe_get l2 i)
+            then loop (succ i)
+            else false
+          in
+          loop 0
 
-module MultiLineString = struct
-  type t = LineString.t array
-  let lines = Fun.id
-end
+      let of_json t =
+        try J.to_array (decode_or_err J.to_float) t
+        with Failure m -> Error (`Msg m)
 
-module Polygon = struct 
-  type t = LineString.t array
+      let to_json arr = J.array J.float arr
+    end
 
-  let interior_ring t = t.(0)
+    module Point = struct
+      type t = Position.t
 
-  (* If used a lot, should changed to cstruct style off and len 
-     to avoid the allocations here. *)
-  let exterior_rings t = Array.sub t 1 (Array.length t - 1)
-end
+      let typ = "Point"
+      let position = Fun.id
+      let v position = position
 
-module MultiPolygon = struct
-  type t = Polygon.t array
-  let polygons = Fun.id
-end
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ -> J.to_array (decode_or_err J.to_float) coords
+            | t -> Error (`Msg ("Expected type of `Point' but got " ^ t)))
 
-module GeometryCollection = struct
-  type elt = 
-    | Point of Point.t 
-    | MultiPoint of MultiPoint.t 
-    | LineString of LineString.t 
-    | MultiLineString of MultiLineString.t
-    | Polygon of Polygon.t 
-    | MultiPolygon of MultiPolygon.t
-    | Collection of elt
+      let to_json position =
+        J.obj
+          [ ("type", J.string typ); ("coordinates", Position.to_json position) ]
+    end
 
-  type t = elt list
-end
+    module MultiPoint = struct
+      type t = Position.t array
 
-module Make (P : S.PARSER) = struct
-  type t
-end
+      let typ = "MultiPoint"
+      let coordinates = Fun.id
+      let v positions = positions
 
-module Ezjsonm_parser = struct
-  type t = Ezjsonm.value
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ -> (
+                try
+                  J.to_array
+                    (decode_or_err (J.to_array (decode_or_err J.to_float)))
+                    coords
+                with Failure m -> Error (`Msg m))
+            | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
-  let catch_err f v = 
-    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+      let to_json positions =
+        J.obj
+          [
+            ("type", J.string typ);
+            ("coordinates", J.array Position.to_json positions);
+          ]
+    end
 
-  let of_string = catch_err Ezjsonm.value_from_string
+    module LineString = struct
+      type t = Position.t array
 
-  let of_channel = catch_err Ezjsonm.value_from_channel
+      let typ = "LineString"
+      let coordinates = Fun.id
 
-  let find = Ezjsonm.find_opt
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ ->
+                let* arr =
+                  try
+                    J.to_array
+                      (decode_or_err (J.to_array (decode_or_err J.to_float)))
+                      coords
+                  with Failure m -> Error (`Msg m)
+                in
+                if Array.length arr < 2 then
+                  Error (`Msg "LineStrings should have two or more points")
+                else Ok arr
+            | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
-  let to_string t = 
-    catch_err Ezjsonm.get_string t
-  
-  let to_float t = 
-    catch_err Ezjsonm.get_float t
+      let to_json positions =
+        J.obj
+          [
+            ("type", J.string typ);
+            ("coordinates", J.array Position.to_json positions);
+          ]
+    end
 
-    let to_list f t = 
-      catch_err (Ezjsonm.get_list f) t
+    module MultiLineString = struct
+      type t = LineString.t array
+
+      let typ = "MultiLineString"
+      let lines = Fun.id
+
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ -> (
+                try
+                  J.to_array
+                    (decode_or_err
+                       (J.to_array
+                          (decode_or_err
+                             (J.to_array (decode_or_err J.to_float)))))
+                    coords
+                with Failure m -> Error (`Msg m))
+            | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
+
+      let to_json positions =
+        J.obj
+          [
+            ("type", J.string typ);
+            ("coordinates", J.array LineString.to_json positions);
+          ]
+    end
+
+    module Polygon = struct
+      type t = LineString.t array
+
+      let typ = "Polygon"
+      let interior_ring t = t.(0)
+
+      (* If used a lot, should changed to cstruct style off and len
+         to avoid the allocations here. *)
+      let exterior_rings t = Array.sub t 1 (Array.length t - 1)
+
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ -> (
+                try J.to_array (decode_or_err LineString.of_json) coords
+                with Failure m -> Error (`Msg m))
+            | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
+
+      let to_json positions =
+        J.obj
+          [
+            ("type", J.string typ);
+            ("coordinates", J.array LineString.to_json positions);
+          ]
+    end
+
+    module MultiPolygon = struct
+      type t = Polygon.t array
+
+      let typ = "MultiPolygon"
+      let polygons = Fun.id
+
+      let of_json json =
+        match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
+        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | _, None ->
+            Error (`Msg "JSON should have a key-value for `coordinates'")
+        | Some typ, Some coords -> (
+            let* typ = J.to_string typ in
+            match typ with
+            | t when t = typ -> (
+                try J.to_array (decode_or_err Polygon.of_json) coords
+                with Failure m -> Error (`Msg m))
+            | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
+
+      let to_json positions =
+        J.obj
+          [
+            ("type", J.string typ);
+            ("coordinates", J.array Polygon.to_json positions);
+          ]
+    end
+
+    module GeometryCollection = struct
+      type elt =
+        | Point of Point.t
+        | MultiPoint of MultiPoint.t
+        | LineString of LineString.t
+        | MultiLineString of MultiLineString.t
+        | Polygon of Polygon.t
+        | MultiPolygon of MultiPolygon.t
+        | Collection of elt
+
+      type t = elt list
+    end
+  end
 end

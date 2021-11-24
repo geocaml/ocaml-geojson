@@ -1,0 +1,5 @@
+(test
+ (name test)
+ (libraries alcotest ezjsonm geojson))
+
+(data_only_dirs files)

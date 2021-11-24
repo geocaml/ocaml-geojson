@@ -1,7 +1,2 @@
 module S = S
-
-include S.GEOMETRY
-
-module Make (P : S.PARSER) : S.GEOJSON
-
-module Ezjsonm_parser : S.PARSER with type t = Ezjsonm.value
+module Make (J : S.JSON) : S.GEOJSON with type json = J.t
