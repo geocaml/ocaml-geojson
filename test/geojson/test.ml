@@ -30,6 +30,8 @@ module Ezjsonm_parser = struct
   let to_array f t = Result.map Array.of_list @@ to_list f t
   let array f t = list f (Array.to_list t)
   let obj = Ezjsonm.dict
+  let null = `Null
+  let is_null = function `Null -> true | _ -> false
 end
 
 module Geojson = Geojson.Make (Ezjsonm_parser)

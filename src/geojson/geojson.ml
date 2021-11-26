@@ -7,9 +7,6 @@ let decode_or_err f v =
 
 module Make (J : S.JSON) = struct
   type json = J.t
-  type t = unit
-
-  let of_json _json = Ok ()
 
   module Geometry = struct
     type json = J.t
@@ -226,7 +223,7 @@ module Make (J : S.JSON) = struct
           ]
     end
 
-    module GeometryCollection = struct
+    module Collection = struct
       type elt =
         | Point of Point.t
         | MultiPoint of MultiPoint.t
@@ -237,6 +234,151 @@ module Make (J : S.JSON) = struct
         | Collection of elt
 
       type t = elt list
+
+      let of_json _ = assert false
+      let to_json _ = assert false
+    end
+
+    type t =
+      | Point of Point.t
+      | MultiPoint of MultiPoint.t
+      | LineString of LineString.t
+      | MultiLineString of MultiLineString.t
+      | Polygon of Polygon.t
+      | MultiPolygon of MultiPolygon.t
+      | Collection of Collection.t
+
+    let of_json json =
+      match J.find json [ "type" ] with
+      | Some typ -> (
+          match J.to_string typ with
+          | Ok "Point" -> Result.map (fun v -> Point v) @@ Point.of_json json
+          | Ok "MultiPoint" ->
+              Result.map (fun v -> MultiPoint v) @@ MultiPoint.of_json json
+          | Ok "LineString" ->
+              Result.map (fun v -> LineString v) @@ LineString.of_json json
+          | Ok "MultiLineString" ->
+              Result.map (fun v -> MultiLineString v)
+              @@ MultiLineString.of_json json
+          | Ok "Polygon" ->
+              Result.map (fun v -> Polygon v) @@ Polygon.of_json json
+          | Ok "MultiPolygon" ->
+              Result.map (fun v -> MultiPolygon v) @@ MultiPolygon.of_json json
+          | Ok "GeometryCollection" ->
+              Result.map (fun v -> Collection v) @@ Collection.of_json json
+          | Ok typ -> Error (`Msg ("Unknown type of geometry " ^ typ))
+          | Error _ as e -> e)
+      | None ->
+          Error
+            (`Msg
+              "A Geojson text should contain one object with a member `type`.")
+
+    let to_json = function
+      | Point point -> Point.to_json point
+      | MultiPoint mp -> MultiPoint.to_json mp
+      | LineString ls -> LineString.to_json ls
+      | MultiLineString mls -> MultiLineString.to_json mls
+      | Polygon p -> Polygon.to_json p
+      | MultiPolygon mp -> MultiPolygon.to_json mp
+      | Collection c -> Collection.to_json c
+  end
+
+  module Feature = struct
+    type t = Geometry.t option
+
+    let geometry = Fun.id
+
+    let of_json json =
+      match J.find json [ "type" ] with
+      | Some json -> (
+          match J.to_string json with
+          | Ok "Feature" -> (
+              match J.find json [ "geometry" ] with
+              | Some geometry ->
+                  Result.map Option.some (Geometry.of_json geometry)
+              | None -> Ok None)
+          | Ok s ->
+              Error
+                (`Msg
+                  ("A Geojson feature requires the type `Feature`. Found type, \
+                    but it was "
+                  ^ s))
+          | Error _ as e -> e)
+      | None ->
+          Error
+            (`Msg
+              "A Geojson feature requires the type `Feature`. No type was \
+               found.")
+
+    let to_json t =
+      J.obj
+        [
+          ("type", J.string "Feature");
+          ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+        ]
+
+    module Collection = struct
+      type feature = t
+      type nonrec t = feature array
+
+      let features = Fun.id
+
+      let of_json json =
+        match J.find json [ "type" ] with
+        | Some json -> (
+            match J.to_string json with
+            | Ok "FeatureCollection" -> (
+                match J.find json [ "features" ] with
+                | Some features ->
+                    J.to_array
+                      (fun geometry -> decode_or_err of_json geometry)
+                      features
+                | None ->
+                    Error
+                      (`Msg
+                        "A feature collection should have a member called \
+                         `features`."))
+            | Ok s ->
+                Error
+                  (`Msg
+                    ("A Geojson feature collection requires the type \
+                      `FeatureCollection`. Found type, but it was "
+                    ^ s))
+            | Error _ as e -> e)
+        | None ->
+            Error
+              (`Msg
+                "A Geojson feature collection requires the type \
+                 `FeatureCollection`. No type was found.")
+
+      let to_json t =
+        J.obj
+          [
+            ("type", J.string "FeatureCollection");
+            ("features", J.array to_json t);
+          ]
     end
   end
+
+  type t =
+    | Feature of Feature.t
+    | FeatureCollection of Feature.Collection.t
+    | Geometry of Geometry.t
+
+  let of_json json =
+    match J.find json [ "type" ] with
+    | Some typ -> (
+        match J.to_string typ with
+        | Ok "Feature" ->
+            Result.map (fun v -> Feature v) @@ Feature.of_json json
+        | Ok "FeatureCollection" ->
+            Result.map (fun v -> FeatureCollection v)
+            @@ Feature.Collection.of_json json
+        | Ok _maybe_geometry ->
+            Result.map (fun v -> Geometry v) @@ Geometry.of_json json
+        | Error _ as e -> e)
+    | None ->
+        Error
+          (`Msg
+            "A Geojson text should contain one object with a member `type`.")
 end

@@ -31,6 +31,12 @@ module type JSON = sig
 
   val obj : (string * t) list -> t
   (** A JSON object from an association list *)
+
+  val null : t
+  (** Null value *)
+
+  val is_null : t -> bool
+  (** Test for null *)
 end
 
 module type JSON_CONV = sig
@@ -117,7 +123,7 @@ module type GEOMETRY = sig
     include JSON_CONV with type t := t and type json := json
   end
 
-  module GeometryCollection : sig
+  module Collection : sig
     type elt =
       | Point of Point.t
       | MultiPoint of MultiPoint.t
@@ -129,16 +135,37 @@ module type GEOMETRY = sig
 
     type t = elt list
   end
+
+  type t
 end
 
 module type GEOJSON = sig
   type json
   (** The internal representation of JSON *)
 
-  type t
-  (** A geojson object *)
+  module Geometry : GEOMETRY with type json = json
+
+  module Feature : sig
+    type t
+
+    val geometry : t -> Geometry.t option
+
+    include JSON_CONV with type t := t and type json := json
+
+    module Collection : sig
+      type feature = t
+      type t
+
+      val features : t -> feature array
+
+      include JSON_CONV with type t := t and type json := json
+    end
+  end
+
+  type t =
+    | Feature of Feature.t
+    | FeatureCollection of Feature.Collection.t
+    | Geometry of Geometry.t  (** A geojson object *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
-
-  module Geometry : GEOMETRY with type json = json
 end

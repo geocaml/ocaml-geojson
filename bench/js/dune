@@ -1,0 +1,14 @@
+(executable
+ (name index)
+ (modes js)
+ (js_of_ocaml
+  (javascript_files json.js))
+ (libraries js_of_ocaml geojson ezjsonm brr))
+
+(rule
+ (alias default)
+ (deps index.bc.js)
+ (mode promote)
+ (targets index.js)
+ (action
+  (copy %{deps} %{targets})))
