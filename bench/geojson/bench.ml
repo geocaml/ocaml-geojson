@@ -1,28 +1,78 @@
 open Bechamel
 open Toolkit
 
-(* This is our /protected/ function which take an argument and return a simple
-   function: [unit -> 'a]. The function must be wrapped into a [Staged.t].
-   NOTE: [words] is __outside__ our [(unit -> 'a) Staged.t]*)
+module Ezjsonm_parser = struct
+  type t = Ezjsonm.value
 
-let make_list words =
+  let catch_err f v =
+    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+
+  let find = Ezjsonm.find_opt
+  let to_string t = catch_err Ezjsonm.get_string t
+  let string = Ezjsonm.string
+  let to_float t = catch_err Ezjsonm.get_float t
+  let float = Ezjsonm.float
+  let to_list f t = catch_err (Ezjsonm.get_list f) t
+  let list f t = Ezjsonm.list f t
+  let to_array f t = Result.map Array.of_list @@ to_list f t
+  let array f t = list f (Array.to_list t)
+  let obj = Ezjsonm.dict
+  let null = `Null
+  let is_null = function `Null -> true | _ -> false
+end
+
+module Geo = Geojson.Make (Ezjsonm_parser)
+
+let find_code expected_code nom file =
+  let s =
+    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsonm.from_string
+  in
+  let find f =
+    match Geo.Feature.properties f with
+    | Some props ->
+        let nom' = Ezjsonm.find props [ "nom" ] |> Ezjsonm.get_string in
+        nom = nom'
+    | _ -> false
+  in
   Staged.stage @@ fun () ->
-  let rec go n acc = if n = 0 then acc else go (n - 1) (n :: acc) in
-  ignore (go ((words / 3) + 1) [])
+  ignore
+  @@
+  let code =
+    match Geo.of_json s with
+    | Error (`Msg m) -> failwith m
+    | Ok (FeatureCollection fcs) -> (
+        let features = Geo.Feature.Collection.features fcs in
+        match Array.find_opt (fun f -> find f) features with
+        | Some f ->
+            Option.map (fun v ->
+                Ezjsonm.find v [ "code" ] |> Ezjsonm.get_string)
+            @@ Geo.Feature.properties f
+        | None -> None)
+    | Ok _ -> assert false
+  in
+  if expected_code = code then ()
+  else failwith ("Got " ^ Option.value ~default:"None" code)
 
-(* From our function [make_list], we make an indexed (by [args]) test. It's a list
-   of tests which are applied with [args] such as:
-    {[
-      let test =
-        [ make_list 0
-        ; make_list 10
-        ; make_list 100
-        ; make_list 400
-        ; make_list 1000 ]
-    ]} *)
+let of_json_to_json file =
+  let s =
+    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsonm.from_string
+  in
+  Staged.stage @@ fun () ->
+  ignore
+  @@
+  match Geo.of_json s with
+  | Ok geo -> Geo.to_json geo
+  | Error (`Msg m) -> failwith m
+
 let test =
-  Test.make_indexed ~name:"list" ~fmt:"%s %d" ~args:[ 0; 10; 100; 400; 1000 ]
-    make_list
+  Test.make_grouped ~name:"standard-geojsom"
+    [
+      Test.make ~name:"of_to_json"
+        (of_json_to_json "inputs/arrondissements-occitanie.geojson");
+      Test.make ~name:"find"
+        (find_code (Some "31003") "Toulouse"
+           "inputs/arrondissements-occitanie.geojson");
+    ]
 
 let benchmark () =
   let ols =

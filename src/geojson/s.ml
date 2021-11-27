@@ -136,7 +136,14 @@ module type GEOMETRY = sig
     type t = elt list
   end
 
-  type t
+  type t =
+    | Point of Point.t
+    | MultiPoint of MultiPoint.t
+    | LineString of LineString.t
+    | MultiLineString of MultiLineString.t
+    | Polygon of Polygon.t
+    | MultiPolygon of MultiPolygon.t
+    | Collection of Collection.t
 end
 
 module type GEOJSON = sig
@@ -149,6 +156,7 @@ module type GEOJSON = sig
     type t
 
     val geometry : t -> Geometry.t option
+    val properties : t -> json option
 
     include JSON_CONV with type t := t and type json := json
 
@@ -167,5 +175,5 @@ module type GEOJSON = sig
     | FeatureCollection of Feature.Collection.t
     | Geometry of Geometry.t  (** A geojson object *)
 
-  val of_json : json -> (t, [ `Msg of string ]) result
+  include JSON_CONV with type t := t and type json := json
 end

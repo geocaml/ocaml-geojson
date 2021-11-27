@@ -49,16 +49,20 @@ module Make (J : S.JSON) = struct
       let typ = "Point"
       let position = Fun.id
       let v position = position
+      let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
 
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing Point")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
-            | t when t = typ -> J.to_array (decode_or_err J.to_float) coords
+            | t when t = typ -> parse_coords coords
             | t -> Error (`Msg ("Expected type of `Point' but got " ^ t)))
 
       let to_json position =
@@ -73,20 +77,23 @@ module Make (J : S.JSON) = struct
       let coordinates = Fun.id
       let v positions = positions
 
+      let parse_coords coords =
+        J.to_array (decode_or_err Point.parse_coords) coords
+
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing \
+                 MultiPoint")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
             | t when t = typ -> (
-                try
-                  J.to_array
-                    (decode_or_err (J.to_array (decode_or_err J.to_float)))
-                    coords
-                with Failure m -> Error (`Msg m))
+                try parse_coords coords with Failure m -> Error (`Msg m))
             | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
       let to_json positions =
@@ -103,25 +110,27 @@ module Make (J : S.JSON) = struct
       let typ = "LineString"
       let coordinates = Fun.id
 
+      let parse_coords coords =
+        let* arr =
+          try MultiPoint.parse_coords coords with Failure m -> Error (`Msg m)
+        in
+        if Array.length arr < 2 then
+          Error (`Msg "LineStrings should have two or more points")
+        else Ok arr
+
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing \
+                 LineString")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
-            | t when t = typ ->
-                let* arr =
-                  try
-                    J.to_array
-                      (decode_or_err (J.to_array (decode_or_err J.to_float)))
-                      coords
-                  with Failure m -> Error (`Msg m)
-                in
-                if Array.length arr < 2 then
-                  Error (`Msg "LineStrings should have two or more points")
-                else Ok arr
+            | t when t = typ -> parse_coords coords
             | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
       let to_json positions =
@@ -138,23 +147,23 @@ module Make (J : S.JSON) = struct
       let typ = "MultiLineString"
       let lines = Fun.id
 
+      let parse_coords coords =
+        J.to_array (decode_or_err LineString.parse_coords) coords
+
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing \
+                 MultiLineString")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
             | t when t = typ -> (
-                try
-                  J.to_array
-                    (decode_or_err
-                       (J.to_array
-                          (decode_or_err
-                             (J.to_array (decode_or_err J.to_float)))))
-                    coords
-                with Failure m -> Error (`Msg m))
+                try parse_coords coords with Failure m -> Error (`Msg m))
             | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
       let to_json positions =
@@ -175,17 +184,27 @@ module Make (J : S.JSON) = struct
          to avoid the allocations here. *)
       let exterior_rings t = Array.sub t 1 (Array.length t - 1)
 
+      let parse_coords coords =
+        try
+          J.to_array
+            (decode_or_err
+               (J.to_array
+                  (decode_or_err (J.to_array (decode_or_err J.to_float)))))
+            coords
+        with Failure m -> Error (`Msg m)
+
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing Polygon")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
-            | t when t = typ -> (
-                try J.to_array (decode_or_err LineString.of_json) coords
-                with Failure m -> Error (`Msg m))
+            | t when t = typ -> parse_coords coords
             | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
       let to_json positions =
@@ -204,14 +223,18 @@ module Make (J : S.JSON) = struct
 
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
-        | None, _ -> Error (`Msg "JSON should have a key-value for `type'")
+        | None, _ ->
+            Error
+              (`Msg
+                "JSON should have a key-value for `type' whilst parsing \
+                 MultiPolygon")
         | _, None ->
             Error (`Msg "JSON should have a key-value for `coordinates'")
         | Some typ, Some coords -> (
             let* typ = J.to_string typ in
             match typ with
             | t when t = typ -> (
-                try J.to_array (decode_or_err Polygon.of_json) coords
+                try J.to_array (decode_or_err Polygon.parse_coords) coords
                 with Failure m -> Error (`Msg m))
             | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
 
@@ -284,19 +307,24 @@ module Make (J : S.JSON) = struct
   end
 
   module Feature = struct
-    type t = Geometry.t option
+    type t = Geometry.t option * json option
 
-    let geometry = Fun.id
+    let geometry = fst
+    let properties = snd
 
     let of_json json =
       match J.find json [ "type" ] with
-      | Some json -> (
-          match J.to_string json with
+      | Some typ -> (
+          match J.to_string typ with
           | Ok "Feature" -> (
-              match J.find json [ "geometry" ] with
-              | Some geometry ->
-                  Result.map Option.some (Geometry.of_json geometry)
-              | None -> Ok None)
+              match
+                (J.find json [ "geometry" ], J.find json [ "properties" ])
+              with
+              | Some geometry, props ->
+                  Result.map
+                    (fun v -> (Option.some v, props))
+                    (Geometry.of_json geometry)
+              | None, props -> Ok (None, props))
           | Ok s ->
               Error
                 (`Msg
@@ -310,11 +338,12 @@ module Make (J : S.JSON) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json t =
+    let to_json (t, props) =
       J.obj
         [
           ("type", J.string "Feature");
           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+          ("properties", Option.(value ~default:J.null props));
         ]
 
     module Collection = struct
@@ -325,8 +354,8 @@ module Make (J : S.JSON) = struct
 
       let of_json json =
         match J.find json [ "type" ] with
-        | Some json -> (
-            match J.to_string json with
+        | Some typ -> (
+            match J.to_string typ with
             | Ok "FeatureCollection" -> (
                 match J.find json [ "features" ] with
                 | Some features ->
@@ -381,4 +410,9 @@ module Make (J : S.JSON) = struct
         Error
           (`Msg
             "A Geojson text should contain one object with a member `type`.")
+
+  let to_json = function
+    | Feature f -> Feature.to_json f
+    | FeatureCollection fc -> Feature.Collection.to_json fc
+    | Geometry g -> Geometry.to_json g
 end

@@ -43,30 +43,29 @@ let (msg : [ `Msg of string ] Alcotest.testable) =
   Alcotest.of_pp (fun ppf (`Msg m) -> Fmt.pf ppf "%s" m)
 
 let test_multi_line () =
-  let open Geojson in
   let s = read_file "files/valid/multilinestring.json" in
   let json = Ezjsonm.value_from_string s in
-  let coords = Geometry.MultiLineString.of_json json in
-  let json' = Result.map Geometry.MultiLineString.to_json coords in
-  let t =
-    Result.map
-      (fun v ->
-        Geometry.(
-          Array.map (fun v ->
-              Array.map (fun l -> [| Position.long l; Position.lat l |])
-              @@ LineString.coordinates v)
-          @@ MultiLineString.lines v))
-      coords
+  let geo = Geojson.of_json json in
+  let coords =
+    match geo with Ok (Geometry (MultiLineString m)) -> m | _ -> assert false
   in
-  Alcotest.(check (result (array @@ array @@ array (float 0.)) msg))
+  let json' = Geojson.Geometry.MultiLineString.to_json coords in
+  let t =
+    Geojson.Geometry.(
+      Array.map (fun v ->
+          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          @@ LineString.coordinates v)
+      @@ MultiLineString.lines coords)
+  in
+
+  Alcotest.(check (array @@ array @@ array (float 0.)))
     "same multi_line_string"
-    (Ok
-       [|
-         [| [| 170.0; 45.0 |]; [| 180.0; 45.0 |] |];
-         [| [| -180.0; 45.0 |]; [| -170.0; 45.0 |] |];
-       |])
+    [|
+      [| [| 170.0; 45.0 |]; [| 180.0; 45.0 |] |];
+      [| [| -180.0; 45.0 |]; [| -170.0; 45.0 |] |];
+    |]
     t;
-  Alcotest.(check (result ezjsonm msg)) "same json" (Ok json) json'
+  Alcotest.(check ezjsonm) "same json" json json'
 
 let () =
   Alcotest.run "geojson"
