@@ -1,5 +1,5 @@
 (test
  (name test)
+ (deps
+  (source_tree files))
  (libraries alcotest ezjsonm geojson))
-
-(data_only_dirs files)

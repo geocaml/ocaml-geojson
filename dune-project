@@ -1,5 +1,5 @@
 (lang dune 2.9)
-(version 0.0.1)
+
 (name geojson)
 
 (generate_opam_files true)
@@ -22,7 +22,6 @@
  (name geojsonm)
  (synopsis "Streaming geojson library using jsonm")
  (description "A library for manipulating Geojson as a stream, useful because Geojson can be gigabytes in size.")
- (depends 
-  (geojson (= :version))))
+ (depends jsonm))
 
 (using mdx 0.1)

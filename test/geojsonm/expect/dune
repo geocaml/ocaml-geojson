@@ -1,0 +1,5 @@
+(tests
+ (names test)
+ (deps
+  (source_tree input))
+ (libraries geojsonm))

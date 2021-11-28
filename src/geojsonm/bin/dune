@@ -1,0 +1,5 @@
+(executable
+ (name geojsonm)
+ (public_name geojsonm)
+ (package geojsonm)
+ (libraries geojsonm cmdliner))

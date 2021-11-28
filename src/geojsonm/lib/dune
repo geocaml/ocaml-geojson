@@ -1,0 +1,4 @@
+(library
+ (name geojsonm)
+ (public_name geojsonm)
+ (libraries ezjsonm jsonm))
