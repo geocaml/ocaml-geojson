@@ -138,19 +138,6 @@ module type Geometry = sig
     include Json_conv with type t := t and type json := json
   end
 
-  module Collection : sig
-    type elt =
-      | Point of Point.t
-      | MultiPoint of MultiPoint.t
-      | LineString of LineString.t
-      | MultiLineString of MultiLineString.t
-      | Polygon of Polygon.t
-      | MultiPolygon of MultiPolygon.t
-      | Collection of elt
-
-    type t = elt list
-  end
-
   type t =
     | Point of Point.t
     | MultiPoint of MultiPoint.t
@@ -158,7 +145,7 @@ module type Geometry = sig
     | MultiLineString of MultiLineString.t
     | Polygon of Polygon.t
     | MultiPolygon of MultiPolygon.t
-    | Collection of Collection.t
+    | Collection of t list
 end
 
 module type S = sig
@@ -179,7 +166,7 @@ module type S = sig
       type feature = t
       type t
 
-      val features : t -> feature array
+      val features : t -> feature list
 
       include Json_conv with type t := t and type json := json
     end
@@ -191,6 +178,37 @@ module type S = sig
     | Geometry of Geometry.t  (** A geojson object *)
 
   include Json_conv with type t := t and type json := json
+
+  module Random : sig
+    type geometry =
+      | Point
+      | MultiPoint of int
+      | LineString of int
+      | MultiLineString of int * int
+      | Polygon of int
+      | MultiPolygon of int * int
+      | Collection of geometry list
+
+    type feature = { properties : json option; geometry : geometry }
+    type r = FC of feature list | F of feature | G of geometry
+
+    (** {3 Generate random geojson}
+
+        The random module provides a way of quickly constructing random, correct
+        GeoJson. You provide the skeleton of the document using type {!t} and
+        tweaking some of the parameters. For example:
+
+        [{
+          let random_structure = 
+            FC (List.init 100 (fun _ -> { properties = None; geometry = Point }))
+        }]*)
+
+    val random : f:(unit -> float) -> r -> t
+    (** [random ~f r] produces random GeoJson based on the structure provided by
+        [r] and using the random float generator [f]. Note the random geometry
+        maker will follow the rules of GeoJson (for making Polygons for
+        example). *)
+  end
 end
 
 module type Geojson = sig

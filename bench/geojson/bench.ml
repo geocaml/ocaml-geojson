@@ -42,7 +42,7 @@ let find_code expected_code nom file =
     | Error (`Msg m) -> failwith m
     | Ok (FeatureCollection fcs) -> (
         let features = Geo.Feature.Collection.features fcs in
-        match Array.find_opt (fun f -> find f) features with
+        match List.find_opt (fun f -> find f) features with
         | Some f ->
             Option.map (fun v ->
                 Ezjsonm.find v [ "code" ] |> Ezjsonm.get_string)

@@ -86,7 +86,7 @@ module Make (J : Geojson_intf.Json) = struct
     end
 
     module MultiPoint = struct
-      type t = Position.t array
+      type t = Point.t array
 
       let typ = "MultiPoint"
       let coordinates = Fun.id
@@ -226,7 +226,7 @@ module Make (J : Geojson_intf.Json) = struct
         J.obj
           [
             ("type", J.string typ);
-            ("coordinates", J.array LineString.to_json positions);
+            ("coordinates", J.array (J.array (J.array J.float)) positions);
           ]
     end
 
@@ -257,24 +257,9 @@ module Make (J : Geojson_intf.Json) = struct
         J.obj
           [
             ("type", J.string typ);
-            ("coordinates", J.array Polygon.to_json positions);
+            ( "coordinates",
+              J.array (J.array (J.array (J.array J.float))) positions );
           ]
-    end
-
-    module Collection = struct
-      type elt =
-        | Point of Point.t
-        | MultiPoint of MultiPoint.t
-        | LineString of LineString.t
-        | MultiLineString of MultiLineString.t
-        | Polygon of Polygon.t
-        | MultiPolygon of MultiPolygon.t
-        | Collection of elt
-
-      type t = elt list
-
-      let of_json _ = assert false
-      let to_json _ = assert false
     end
 
     type t =
@@ -284,9 +269,9 @@ module Make (J : Geojson_intf.Json) = struct
       | MultiLineString of MultiLineString.t
       | Polygon of Polygon.t
       | MultiPolygon of MultiPolygon.t
-      | Collection of Collection.t
+      | Collection of t list
 
-    let of_json json =
+    let rec of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
@@ -302,8 +287,16 @@ module Make (J : Geojson_intf.Json) = struct
               Result.map (fun v -> Polygon v) @@ Polygon.of_json json
           | Ok "MultiPolygon" ->
               Result.map (fun v -> MultiPolygon v) @@ MultiPolygon.of_json json
-          | Ok "GeometryCollection" ->
-              Result.map (fun v -> Collection v) @@ Collection.of_json json
+          | Ok "GeometryCollection" -> (
+              match J.find json [ "geometries" ] with
+              | Some list ->
+                  let geo = J.to_list (decode_or_err of_json) list in
+                  Result.map (fun v -> Collection v) geo
+              | None ->
+                  Error
+                    (`Msg
+                      "A geometry collection should have a member called \
+                       geometries"))
           | Ok typ -> Error (`Msg ("Unknown type of geometry " ^ typ))
           | Error _ as e -> e)
       | None ->
@@ -311,14 +304,19 @@ module Make (J : Geojson_intf.Json) = struct
             (`Msg
               "A Geojson text should contain one object with a member `type`.")
 
-    let to_json = function
+    let rec to_json = function
       | Point point -> Point.to_json point
       | MultiPoint mp -> MultiPoint.to_json mp
       | LineString ls -> LineString.to_json ls
       | MultiLineString mls -> MultiLineString.to_json mls
       | Polygon p -> Polygon.to_json p
       | MultiPolygon mp -> MultiPolygon.to_json mp
-      | Collection c -> Collection.to_json c
+      | Collection c ->
+          J.obj
+            [
+              ("type", J.string "GeometryCollection");
+              ("geometries", J.list to_json c);
+            ]
   end
 
   module Feature = struct
@@ -363,7 +361,7 @@ module Make (J : Geojson_intf.Json) = struct
 
     module Collection = struct
       type feature = t
-      type nonrec t = feature array
+      type nonrec t = feature list
 
       let features = Fun.id
 
@@ -374,7 +372,7 @@ module Make (J : Geojson_intf.Json) = struct
             | Ok "FeatureCollection" -> (
                 match J.find json [ "features" ] with
                 | Some features ->
-                    J.to_array
+                    J.to_list
                       (fun geometry -> decode_or_err of_json geometry)
                       features
                 | None ->
@@ -399,7 +397,7 @@ module Make (J : Geojson_intf.Json) = struct
         J.obj
           [
             ("type", J.string "FeatureCollection");
-            ("features", J.array to_json t);
+            ("features", J.list to_json t);
           ]
     end
   end
@@ -430,4 +428,54 @@ module Make (J : Geojson_intf.Json) = struct
     | Feature f -> Feature.to_json f
     | FeatureCollection fc -> Feature.Collection.to_json fc
     | Geometry g -> Geometry.to_json g
+
+  module Random = struct
+    type geometry =
+      | Point
+      | MultiPoint of int
+      | LineString of int
+      | MultiLineString of int * int
+      | Polygon of int
+      | MultiPolygon of int * int
+      | Collection of geometry list
+
+    type feature = { properties : json option; geometry : geometry }
+    type r = FC of feature list | F of feature | G of geometry
+
+    let random ~f t =
+      let rec aux_random = function
+        | FC fs ->
+            let features = List.map random_f fs in
+            FeatureCollection features
+        | F f -> Feature (random_f f)
+        | G g -> Geometry (random_g g)
+      and random_f { properties; geometry } =
+        let geo = random_g geometry in
+        (Some geo, properties)
+      and random_g = function
+        | Point -> Geometry.Point (random_point ())
+        | MultiPoint i ->
+            Geometry.MultiPoint (Array.init i (fun _ -> random_point ()))
+        | LineString i ->
+            Geometry.LineString (Array.init i (fun _ -> random_point ()))
+        | MultiLineString (i, j) ->
+            Geometry.MultiLineString
+              (Array.init i @@ fun _ -> Array.init j (fun _ -> random_point ()))
+        | Polygon i -> Geometry.Polygon (random_polygon i)
+        | MultiPolygon (i, j) ->
+            let arr = Array.init i (fun _ -> random_polygon j) in
+            Geometry.MultiPolygon arr
+        | Collection lst ->
+            let lst = List.map random_g lst in
+            Geometry.Collection lst
+      and random_point () =
+        Geometry.(Point.v (Position.v ~lat:(f ()) ~long:(f ()) ()))
+      and random_polygon i =
+        (* This geometry is not going to be very country like... *)
+        let points = Array.init i (fun _ -> random_point ()) in
+        points.(i - 1) <- points.(0);
+        [| points |]
+      in
+      aux_random t
+  end
 end
