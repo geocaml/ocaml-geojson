@@ -1,0 +1,65 @@
+name: OCaml-CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  debian_10_4_13:
+    runs-on: ubuntu-latest
+    container:
+      image: ocaml/opam:debian-10-ocaml-4.13
+      env:
+        HOME: /home/opam
+      options: --user 1000
+    env:
+      HOME: /home/opam
+    defaults:
+      run:
+        working-directory: /home/opam
+    steps:
+    - run: mkdir -p /home/opam/package
+    - name: Cloning
+      run: git clone https://${{ secrets.GithubToken }}@github.com/$GITHUB_REPOSITORY . && git checkout $GITHUB_SHA
+      working-directory: /home/opam/package
+    - name: Pinning Packages
+      run: opam pin add -yn geojson.dev './' && opam pin add -yn geojsonm.dev './'
+      working-directory: /home/opam/package
+    - name: Installing external dependencies
+      run: opam depext -yt geojson.dev && opam depext -yt geojsonm.dev
+      working-directory: /home/opam/package
+    - name: Installing dependencies
+      run: opam install -t -y . --deps-only
+      working-directory: /home/opam/package
+    - name: Building, installing & testing
+      run: opam exec -- dune build @install @runtest
+      working-directory: /home/opam/package
+  debian_10_4_02:
+    runs-on: ubuntu-latest
+    container:
+      image: ocaml/opam:debian-10-ocaml-4.02
+      env:
+        HOME: /home/opam
+      options: --user 1000
+    env:
+      HOME: /home/opam
+    defaults:
+      run:
+        working-directory: /home/opam
+    steps:
+    - run: mkdir -p /home/opam/package
+    - name: Cloning
+      run: git clone https://${{ secrets.GithubToken }}@github.com/$GITHUB_REPOSITORY . && git checkout $GITHUB_SHA
+      working-directory: /home/opam/package
+    - name: Pinning Packages
+      run: opam pin add -yn geojson.dev './' && opam pin add -yn geojsonm.dev './'
+      working-directory: /home/opam/package
+    - name: Installing external dependencies
+      run: opam depext -yt geojson.dev && opam depext -yt geojsonm.dev
+      working-directory: /home/opam/package
+    - name: Installing dependencies
+      run: opam install -t -y . --deps-only
+      working-directory: /home/opam/package
+    - name: Building, installing & testing
+      run: opam exec -- dune build @install @runtest
+      working-directory: /home/opam/package
