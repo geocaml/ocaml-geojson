@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>index (geojson.index)</title><link rel="stylesheet" href="../odoc.css"/><meta charset="utf-8"/><meta name="generator" content="odoc 2.0.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="../index.html">Up</a> – geojson</nav><header class="odoc-preamble"><h2 id="geojson"><a href="#geojson" class="anchor"></a>GeoJson</h2><p>The GeoJson library provides a functor <code>Make</code> for building a GeoJson parsing and manipulating module. You just need to provide a Json parser using tools like <code>Ezjsonm</code> or <code>Yojson</code>.</p><p><i>Before diving in, it is important to note that if you are dealing with gigabytes of data in GeoJson format you would be better served by the <code>Geojsonm</code> library which provides functions using the <code>Jsonm</code> streaming parser to avoid loading everything in memory</i>.</p></header><nav class="odoc-toc"><ul><li><a href="#providing-a-json-parser">Providing a Json Parser</a><ul><li><a href="#ezjsonm-parser">Ezjsonm Parser</a></li></ul></li><li><a href="#using-the-library">Using the Library</a><ul><li><a href="#reading-geojson">Reading Geojson</a></li><li><a href="#manipulating-and-accessing-geojson">Manipulating and Accessing Geojson</a></li></ul></li></ul></nav><div class="odoc-content"><h3 id="providing-a-json-parser"><a href="#providing-a-json-parser" class="anchor"></a>Providing a Json Parser</h3><p>Before getting a Geojson library you first must provide a parser implementation. <a href="Geojson/index.html"><code>Geojson</code></a> doesn't depend on a particular Json parsing library (there are quite a few in the OCaml universe). This modularity comes with a small cost, you must provide a simple parsing module to the <a href="Geojson/Make/index.html"><code>Geojson.Make</code></a> functor.</p><h4 id="ezjsonm-parser"><a href="#ezjsonm-parser" class="anchor"></a>Ezjsonm Parser</h4><p>The following is an example of such a parser. If you can you would be better checking the tests and benchmarks <a href="https://github.com/patricoferris/ocaml-geojson">of this library</a> for an up to date, type-checked and building version.</p><pre><code>module Ezjsonm_parser = struct
+  type t = Ezjsonm.value
+
+  let catch_err f v =
+    try Ok (f v) with Ezjsonm.Parse_error (_, s) -&gt; Error (`Msg s)
+
+  let find = Ezjsonm.find_opt
+  let to_string t = catch_err Ezjsonm.get_string t
+  let string = Ezjsonm.string
+  let to_float t = catch_err Ezjsonm.get_float t
+  let float = Ezjsonm.float
+  let to_list f t = catch_err (Ezjsonm.get_list f) t
+  let list f t = Ezjsonm.list f t
+  let to_array f t = Result.map Array.of_list @@ to_list f t
+  let array f t = list f (Array.to_list t)
+  let obj = Ezjsonm.dict
+  let null = `Null
+  let is_null = function `Null -&gt; true | _ -&gt; false
+end</code></pre><p>Feel free to copy and paste any of the parsers without attribution :)</p><h3 id="using-the-library"><a href="#using-the-library" class="anchor"></a>Using the Library</h3><h4 id="reading-geojson"><a href="#reading-geojson" class="anchor"></a>Reading Geojson</h4><p>Once you have provided the Json parser, you can then start using the library properly. The simplest way to get started is first reading Json into your choosen parsers internal representation and calling <a href="Geojson/module-type-S/index.html#val-of_json"><code>Geojson.S.of_json</code></a>.</p><p>Sticking with the <code>Ezjsonm</code> example we can do</p><pre><code>module G = Geojson.Make(Ezjsonm_parser)
+
+let geojson_of_string s = 
+  let json = Ezjsonm.value_from_string s in
+    match G.of_json json with 
+      | Ok v -&gt; v
+      | Error (`Msg m) -&gt; failwith m</code></pre><h4 id="manipulating-and-accessing-geojson"><a href="#manipulating-and-accessing-geojson" class="anchor"></a>Manipulating and Accessing Geojson</h4><p>Imagine you wished to access all the <code>properties</code> fields in your GeoJson document. There are two ways they can appear -- either as part of a single, toplevel <a href="Geojson/module-type-S/Feature/index.html"><code>Geojson.S.Feature</code></a> object or as a list of features inside <a href="Geojson/module-type-S/Feature/Collection/index.html"><code>Geojson.S.Feature.Collection</code></a>. Here's one way you could go about this:</p><pre><code>let get_all_props s = 
+  let json = Ezjsonm.value_from_string s in
+  let geo = G.of_json json in
+  match geo with 
+    | Ok (Feature f) -&gt; Option.to_list @@ G.Feature.properties f 
+    | Ok (FeatureCollection fc) -&gt; 
+      let fs = G.Feature.Collection.features fc in
+      List.filter_map G.Feature.properties fs 
+    | _ -&gt; []</code></pre></div></body></html>
