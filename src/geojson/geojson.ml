@@ -124,6 +124,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let typ = "LineString"
       let coordinates = Fun.id
+      let v = Fun.id
 
       let parse_coords coords =
         let* arr =
@@ -161,6 +162,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let typ = "MultiLineString"
       let lines = Fun.id
+      let v = Fun.id
 
       let parse_coords coords =
         J.to_array (decode_or_err LineString.parse_coords) coords
@@ -198,6 +200,7 @@ module Make (J : Geojson_intf.Json) = struct
       (* If used a lot, should changed to cstruct style off and len
          to avoid the allocations here. *)
       let exterior_rings t = Array.sub t 1 (Array.length t - 1)
+      let v = Fun.id
 
       let parse_coords coords =
         try
@@ -235,6 +238,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let typ = "MultiPolygon"
       let polygons = Fun.id
+      let v = Fun.id
 
       let of_json json =
         match (J.find json [ "type" ], J.find json [ "coordinates" ]) with

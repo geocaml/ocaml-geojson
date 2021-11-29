@@ -13,6 +13,11 @@
    DEALINGS IN THE SOFTWARE.
 *)
 
+(** {2 Json}
+
+    The GeoJson library does not force you to use a particular JSON parsing
+    library. You must provide one. See the tests and benchmarks for an [Ezjsonm]
+    parser and one for JS using [Brr]'s [Jv] library. *)
 module type Json = sig
   type t
   (** The type your parser uses to represent a parsed JSON object. *)
@@ -54,6 +59,8 @@ module type Json = sig
   (** Test for null *)
 end
 
+(* {2 Json Conversion} *)
+
 module type Json_conv = sig
   type t
   type json
@@ -61,6 +68,10 @@ module type Json_conv = sig
   val of_json : json -> (t, [ `Msg of string ]) result
   val to_json : t -> json
 end
+
+(** {2 GeoJson Geometry Objects}
+
+    The basic primitives for building geometrical shapes in GeoJson. *)
 
 module type Geometry = sig
   type json
@@ -89,51 +100,80 @@ module type Geometry = sig
 
   module Point : sig
     type t
+    (** A point is a single {!Position.t} *)
 
     val position : t -> Position.t
+    (** Convert a point to a position *)
+
     val v : Position.t -> t
+    (** Create a poitn from a position. *)
 
     include Json_conv with type t := t and type json := json
   end
 
   module MultiPoint : sig
     type t
+    (** A multipoint is an array of positions. *)
 
     val coordinates : t -> Position.t array
+    (** Get the positions that make up this multipoint object. *)
+
     val v : Position.t array -> t
+    (** Create a multipoint object from an array of positions. *)
 
     include Json_conv with type t := t and type json := json
   end
 
   module LineString : sig
     type t
+    (** A line string is two or more points *)
 
     val coordinates : t -> Position.t array
+    (** Convert the line into a positionn array *)
+
+    val v : Position.t array -> t
+    (** Create a line string from positions, will raise [Invalid_argument] if
+        the array doesn't have at least two positions. *)
 
     include Json_conv with type t := t and type json := json
   end
 
   module MultiLineString : sig
     type t
+    (** A collection of line strings *)
 
     val lines : t -> LineString.t array
+    (** Access the lines *)
+
+    val v : LineString.t array -> t
+    (** Create a multiline string *)
 
     include Json_conv with type t := t and type json := json
   end
 
   module Polygon : sig
     type t
+    (** A close loop with optional rings *)
 
     val interior_ring : t -> LineString.t
     val exterior_rings : t -> LineString.t array
+
+    val v : LineString.t array -> t
+    (** Create a polygon object from an array of close line strings (note no
+        checking is down here to ensure the loops are indeed closed.) *)
 
     include Json_conv with type t := t and type json := json
   end
 
   module MultiPolygon : sig
     type t
+    (** A multi-polygon object *)
 
     val polygons : t -> Polygon.t array
+    (** Access the polygons *)
+
+    val v : Polygon.t array -> t
+    (** Create a multi-polygon object from an array of {!Polygon.t}s *)
 
     include Json_conv with type t := t and type json := json
   end
@@ -156,6 +196,8 @@ module type S = sig
 
   module Feature : sig
     type t
+    (** A feature object is a geojson object with optional geometry and
+        properties members. *)
 
     val geometry : t -> Geometry.t option
     val properties : t -> json option

@@ -46,6 +46,16 @@ let ezjsonm =
 let (msg : [ `Msg of string ] Alcotest.testable) =
   Alcotest.of_pp (fun ppf (`Msg m) -> Fmt.pf ppf "%s" m)
 
+let _get_all_props s =
+  let json = Ezjsonm.value_from_string s in
+  let geo = Geojson.of_json json in
+  match geo with
+  | Ok (Feature f) -> Option.to_list @@ Geojson.Feature.properties f
+  | Ok (FeatureCollection fc) ->
+      let fs = Geojson.Feature.Collection.features fc in
+      List.filter_map Geojson.Feature.properties fs
+  | _ -> []
+
 let test_multi_line () =
   let s = read_file "files/valid/multilinestring.json" in
   let json = Ezjsonm.value_from_string s in
