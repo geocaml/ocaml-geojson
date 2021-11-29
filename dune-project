@@ -15,13 +15,20 @@
 
 (package
  (name geojson)
- (synopsis "OCaml functions for Geojson")
- (description "Geojson is a 'schema' for JSON to describe geospatial information. This library provides a functor for building a module for manipulating and parsing Geojson into OCaml."))
+ (synopsis "OCaml library for Geojson")
+ (description "Geojson is a 'schema' for JSON to describe geospatial information. 
+  This library provides a functor for building a module for manipulating and parsing Geojson into OCaml.")
+ (depends
+   (alcotest :with-test)
+   (ezjsonm  :with-test)))
 
 (package
  (name geojsonm)
  (synopsis "Streaming geojson library using jsonm")
  (description "A library for manipulating Geojson as a stream, useful because Geojson can be gigabytes in size.")
- (depends jsonm))
+ (depends 
+   (geojson (= :version))
+   jsonm 
+   ezjsonm))
 
 (using mdx 0.1)

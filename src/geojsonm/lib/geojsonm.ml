@@ -38,6 +38,30 @@ end
 
 exception Abort of Err.t
 
+module Ez = struct
+  module Ezjsonm_parser = struct
+    type t = Ezjsonm.value
+
+    let catch_err f v =
+      try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+
+    let find = Ezjsonm.find_opt
+    let to_string t = catch_err Ezjsonm.get_string t
+    let string = Ezjsonm.string
+    let to_float t = catch_err Ezjsonm.get_float t
+    let float = Ezjsonm.float
+    let to_list f t = catch_err (Ezjsonm.get_list f) t
+    let list f t = Ezjsonm.list f t
+    let to_array f t = Result.map Array.of_list @@ to_list f t
+    let array f t = list f (Array.to_list t)
+    let obj = Ezjsonm.dict
+    let null = `Null
+    let is_null = function `Null -> true | _ -> false
+  end
+
+  module Geo = Geojson.Make (Ezjsonm_parser)
+end
+
 type geometry =
   | Point
   | MultiPoint
@@ -49,12 +73,6 @@ type geometry =
 type document = FeatureCollection | Feature | Geometry
 
 let map_coords _src _dst ~f:_ = ()
-
-(* | `Name "type" -> failwith "TODO"
-   | `Name "features" -> failwith "feature_collection"
-   | `Name "geometry" | `Name "properties" -> failwith "feature"
-   | `Name "coordinates" -> failwith "geometry"
-   | `Name "geometries" -> failwith "geometry collection" *)
 
 let decode_single_object decoder : Ezjsonm.value =
   let module Stack = struct
