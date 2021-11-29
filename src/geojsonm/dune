@@ -2,3 +2,5 @@
  (name geojsonm)
  (public_name geojsonm)
  (libraries ezjsonm geojson jsonm))
+
+(include_subdirs unqualified)

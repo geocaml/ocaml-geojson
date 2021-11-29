@@ -1,0 +1,8 @@
+(executable
+ (name bench)
+ (libraries geojsonm))
+
+ (rule
+  (alias bench)
+  (deps ./bench.exe)
+  (action (run ./bench.exe)))
