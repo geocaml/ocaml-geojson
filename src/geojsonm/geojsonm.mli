@@ -23,47 +23,31 @@ module Err : sig
   val pp : Format.formatter -> t -> unit
 end
 
-type geometry =
-  | Point
-  | MultiPoint
-  | LineString
-  | MultiLineString
-  | Polygon
-  | MultiPolygon
-      (** Types for geometry objects to be used in mapping over coordinates
-          (hence the GeometryCollection is absent). *)
-
-type document =
-  | FeatureCollection
-  | Feature
-  | Geometry  (** A GeoJson text is a single object of one of these types. *)
+module G : Geojson.S with type json = Ezjsonm.value
 
 (** {2 Maps}
 
     Maps are functions that allow you to manipulate common structure in GeoJson
     objects. These will be written directly back to the destination that you
-    provide.
+    provide. *)
 
-    For example, you might want to scale all coordinates by a factor of two.
-
-    {[
-      let scale factor decoder = map_coords decoder (Array.map (( *. ) factor))
-    ]} *)
-
-val map_coords :
-  Jsonm.src -> Jsonm.dst -> f:(geometry -> float array -> float array) -> unit
-(** [map_coords src dst ~f] will apply [f] to all GeoJson objects with something
-    coordinate-like. This is essentially any
-    {{:https://datatracker.ietf.org/doc/html/rfc7946#section-3.1} geometry
-    object}. The type of geometry object currently being mapped over is also
-    provided in case you wish to be more specific.
-
-    The map will recurse into geometry collections. *)
-
-val map_props :
+val map_geometry :
+  (G.Geometry.t -> G.Geometry.t) ->
   Jsonm.src ->
   Jsonm.dst ->
-  f:(Ezjsonm.value -> Ezjsonm.value) ->
+  (unit, Err.t) result
+(** [map_geometry f src dst] will apply [f] to all GeoJson objects. This is
+    essentially any
+    {{:https://datatracker.ietf.org/doc/html/rfc7946#section-3.1} geometry
+    object}.
+
+    The map will recurse into geometry collections. Note for the moment if you
+    have a single geometry object as your document, this will not work. *)
+
+val map_props :
+  (Ezjsonm.value -> Ezjsonm.value) ->
+  Jsonm.src ->
+  Jsonm.dst ->
   (unit, Err.t) result
 (** [map_props src dst ~f] will apply [f] to each feature's properties field.
     The properties field is decoded into an {!Ezjsonm.value} for convenience. *)
@@ -84,9 +68,14 @@ val map_props :
         | _ -> failwith "err"
 
       let places src =
-        Geojsonm.fold_props src ~f:(fun acc p -> get_name p :: acc) []
+        Geojsonm.fold_props (fun acc p -> get_name p :: acc) [] src
     ]} *)
 
+val fold_geometry :
+  ('a -> G.Geometry.t -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
+(** [fold_geometry f acc src] is much like {!map_geometry} but allows you to
+    accumulate some result that is then returned to you. *)
+
 val fold_props :
-  Jsonm.src -> f:('a -> Ezjsonm.value -> 'a) -> init:'a -> ('a, Err.t) result
-(** [fold_props src f init] *)
+  ('a -> Ezjsonm.value -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
+(** [fold_props f init src] *)

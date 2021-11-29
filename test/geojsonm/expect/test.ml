@@ -7,6 +7,12 @@ let capitalise_nom obj =
   in
   match obj with `O assoc -> `O (capitalise_nom [] assoc) | x -> x
 
+let remove_all_coords t =
+  let open Geojsonm in
+  match t with
+  | G.Geometry.Polygon _ -> G.Geometry.(Polygon (Polygon.v [||]))
+  | t -> t
+
 let get_string_exn = function `String s -> s | _ -> failwith "err"
 
 let get_name = function
@@ -34,10 +40,15 @@ let () =
   in
   print_or_fail
     ( with_src "./input/simple.geojson" @@ fun src ->
-      Geojsonm.map_props ~f:capitalise_nom src (`Buffer dst) );
+      Geojsonm.map_props capitalise_nom src (`Buffer dst) );
+  Buffer.clear dst;
+  print_or_fail
+    ( with_src "./input/simple.geojson" @@ fun src ->
+      Geojsonm.map_geometry remove_all_coords src (`Buffer dst) );
+  Buffer.clear dst;
   match
     with_src "./input/simple.geojson" @@ fun src ->
-    Geojsonm.fold_props src ~f:(fun acc p -> get_name p :: acc) ~init:[]
+    Geojsonm.fold_props (fun acc p -> get_name p :: acc) [] src
   with
   | Ok lst ->
       Format.printf "Places: %a" Format.(pp_print_list pp_print_string) lst

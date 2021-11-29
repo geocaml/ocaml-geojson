@@ -38,7 +38,7 @@ end
 
 exception Abort of Err.t
 
-module Ez = struct
+module G = struct
   module Ezjsonm_parser = struct
     type t = Ezjsonm.value
 
@@ -59,20 +59,8 @@ module Ez = struct
     let is_null = function `Null -> true | _ -> false
   end
 
-  module Geo = Geojson.Make (Ezjsonm_parser)
+  include Geojson.Make (Ezjsonm_parser)
 end
-
-type geometry =
-  | Point
-  | MultiPoint
-  | LineString
-  | MultiLineString
-  | Polygon
-  | MultiPolygon
-
-type document = FeatureCollection | Feature | Geometry
-
-let map_coords _src _dst ~f:_ = ()
 
 let decode_single_object decoder : Ezjsonm.value =
   let module Stack = struct
@@ -171,7 +159,36 @@ let encode_value e json =
   in
   value json e Stack.Empty
 
-let map_props src dst ~f =
+let map_geometry f src dst =
+  let decoder = Jsonm.decoder src in
+  let encoder = Jsonm.encoder dst in
+  let loc () = Jsonm.decoded_range decoder in
+  let enc v =
+    match Jsonm.encode encoder v with
+    | `Ok -> ()
+    | `Partial -> raise (Abort (`Unexpected "partial encoding"))
+  in
+  let rec go () =
+    match Jsonm.decode decoder with
+    (* TODO(patricoferris): A geometry collection could explode on us here... *)
+    | `Lexeme (`Name "geometry" as t) -> (
+        match G.Geometry.of_json @@ decode_single_object decoder with
+        | Error (`Msg m) -> raise (Abort (`Unexpected m))
+        | Ok g ->
+            let g' = f g in
+            enc (`Lexeme t);
+            encode_value encoder (G.Geometry.to_json g');
+            go ())
+    | `Lexeme _ as t ->
+        enc t;
+        go ()
+    | `Error e -> raise (Abort (`Error (loc (), e)))
+    | `End -> ignore @@ Jsonm.encode encoder `End
+    | `Await -> assert false
+  in
+  try Ok (go ()) with Abort e -> Error e
+
+let map_props f src dst =
   let decoder = Jsonm.decoder src in
   let encoder = Jsonm.encoder dst in
   let loc () = Jsonm.decoded_range decoder in
@@ -196,7 +213,25 @@ let map_props src dst ~f =
   in
   try Ok (go ()) with Abort e -> Error e
 
-let fold_props src ~f ~init =
+let fold_geometry f init src =
+  let decoder = Jsonm.decoder src in
+  let loc () = Jsonm.decoded_range decoder in
+  let rec go acc =
+    match Jsonm.decode decoder with
+    | `Lexeme (`Name "geometry") -> (
+        match G.Geometry.of_json @@ decode_single_object decoder with
+        | Error (`Msg m) -> raise (Abort (`Unexpected m))
+        | Ok g ->
+            let acc = f acc g in
+            go acc)
+    | `Lexeme _ -> go acc
+    | `Error e -> raise (Abort (`Error (loc (), e)))
+    | `End -> acc
+    | `Await -> assert false
+  in
+  try Ok (go init) with Abort e -> Error e
+
+let fold_props f init src =
   let decoder = Jsonm.decoder src in
   let loc () = Jsonm.decoded_range decoder in
   let rec go acc =

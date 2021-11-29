@@ -186,6 +186,8 @@ module type Geometry = sig
     | Polygon of Polygon.t
     | MultiPolygon of MultiPolygon.t
     | Collection of t list
+
+  include Json_conv with type t := t and type json := json
 end
 
 module type S = sig
