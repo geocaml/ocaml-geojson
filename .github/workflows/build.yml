@@ -8,17 +8,17 @@ on:
 jobs:
   build:
   runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image }}
-      env:
-        HOME: /home/opam
-      options: --user 1000
+  container:
+    image: ${{ inputs.image }}
     env:
       HOME: /home/opam
-    defaults:
-      run:
-        working-directory: /home/opam
-    steps:
+    options: --user 1000
+  env:
+    HOME: /home/opam
+  defaults:
+    run:
+      working-directory: /home/opam
+  steps:
     - run: mkdir -p /home/opam/package
     - name: Cloning
       run: git clone https://github.com/$GITHUB_REPOSITORY . && git checkout ${{ github.event.pull_request.head.sha }}
