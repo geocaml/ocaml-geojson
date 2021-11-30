@@ -5,7 +5,31 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    container:
+      image: ocaml/opam:debian-10-ocaml-4.13
+      env:
+        HOME: /home/opam
+      options: --user 1000
+    env:
+      HOME: /home/opam
+    defaults:
+      run:
+        working-directory: /home/opam
+    steps:
+    - run: mkdir -p /home/opam/package
+    - name: Cloning
+      run: git clone https://${{ secrets.GithubToken }}@github.com/$GITHUB_REPOSITORY . && git checkout $GITHUB_SHA
+      working-directory: /home/opam/package
+    - name: Pinning Packages
+      run: opam install ocamlformat.0.19.0
+      working-directory: /home/opam/package
+    - name: Format
+      run: opam exec -- dune build @fmt
+      working-directory: /home/opam/package
   debian_10_4_13:
+    needs: format
     runs-on: ubuntu-latest
     container:
       image: ocaml/opam:debian-10-ocaml-4.13
@@ -35,9 +59,10 @@ jobs:
       run: opam exec -- dune build @install @runtest
       working-directory: /home/opam/package
   debian_10_4_02:
+    needs: format
     runs-on: ubuntu-latest
     container:
-      image: ocaml/opam:debian-10-ocaml-4.02
+      image: ocaml/opam:debian-10-ocaml-4.03
       env:
         HOME: /home/opam
       options: --user 1000
