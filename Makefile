@@ -1,6 +1,6 @@
 .PHONY: bench
 bench:
-	opam exec -- dune build @bench --force
+	opam exec -- dune build @benche --force
 
 .PHONY: docs
 docs:

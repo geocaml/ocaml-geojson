@@ -3,6 +3,6 @@
  (libraries geojsonm))
 
  (rule
-  (alias bench)
+  (alias benche)
   (deps ./bench.exe)
   (action (run ./bench.exe)))

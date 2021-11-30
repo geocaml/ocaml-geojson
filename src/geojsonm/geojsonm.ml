@@ -23,14 +23,15 @@
    Most commmonly, the large size of a GeoJson document is because it is a feature collection
    containing many features, although it's probably not infeasible that there are huge documents
    containing a single feature with lots of geometry objects. *)
+module Make (J : Types.Jsonm) = struct
 
 module Err = struct
   type location = (int * int) * (int * int)
-  type t = [ `Error of location * Jsonm.error | `EOI | `Unexpected of string ]
+  type t = [ `Error of location * J.error | `EOI | `Unexpected of string ]
 
   let pp ppf = function
     | `Error (((l1, l2), (l3, l4)), e) ->
-        Format.fprintf ppf "Error %a (%i:%i - %i:%i)" Jsonm.pp_error e l1 l2 l3
+        Format.fprintf ppf "Error %a (%i:%i - %i:%i)" J.pp_error e l1 l2 l3
           l4
     | `EOI -> Format.fprintf ppf "Unexpected end of input"
     | `Unexpected s -> Format.fprintf ppf "Unexpected %s" s
@@ -69,9 +70,9 @@ let decode_single_object decoder : Ezjsonm.value =
       | In_object of string * (string * Ezjsonm.value) list * t
       | Empty
   end in
-  let loc () = Jsonm.decoded_range decoder in
+  let loc () = J.decoded_range decoder in
   let dec () =
-    match Jsonm.decode decoder with
+    match J.decode decoder with
     | `Lexeme l -> l
     | `Error e -> raise (Abort (`Error (loc (), e)))
     | `End -> raise (Abort `EOI)
@@ -119,7 +120,7 @@ let encode_value e json =
       | In_object of (string * Ezjsonm.value) list * t
       | Empty
   end in
-  let enc e l = ignore (Jsonm.encode e (`Lexeme l)) in
+  let enc e l = ignore (J.encode e (`Lexeme l)) in
   let rec t v e stack =
     match v with
     | `A vs ->
@@ -160,16 +161,16 @@ let encode_value e json =
   value json e Stack.Empty
 
 let map_geometry f src dst =
-  let decoder = Jsonm.decoder src in
-  let encoder = Jsonm.encoder dst in
-  let loc () = Jsonm.decoded_range decoder in
+  let decoder = J.decoder src in
+  let encoder = J.encoder dst in
+  let loc () = J.decoded_range decoder in
   let enc v =
-    match Jsonm.encode encoder v with
+    match J.encode encoder v with
     | `Ok -> ()
     | `Partial -> raise (Abort (`Unexpected "partial encoding"))
   in
   let rec go () =
-    match Jsonm.decode decoder with
+    match J.decode decoder with
     (* TODO(patricoferris): A geometry collection could explode on us here... *)
     | `Lexeme (`Name "geometry" as t) -> (
         match G.Geometry.of_json @@ decode_single_object decoder with
@@ -183,22 +184,22 @@ let map_geometry f src dst =
         enc t;
         go ()
     | `Error e -> raise (Abort (`Error (loc (), e)))
-    | `End -> ignore @@ Jsonm.encode encoder `End
+    | `End -> ignore @@ J.encode encoder `End
     | `Await -> assert false
   in
   try Ok (go ()) with Abort e -> Error e
 
 let map_props f src dst =
-  let decoder = Jsonm.decoder src in
-  let encoder = Jsonm.encoder dst in
-  let loc () = Jsonm.decoded_range decoder in
+  let decoder = J.decoder src in
+  let encoder = J.encoder dst in
+  let loc () = J.decoded_range decoder in
   let enc v =
-    match Jsonm.encode encoder v with
+    match J.encode encoder v with
     | `Ok -> ()
     | `Partial -> raise (Abort (`Unexpected "partial encoding"))
   in
   let rec go () =
-    match Jsonm.decode decoder with
+    match J.decode decoder with
     | `Lexeme (`Name "properties" as t) ->
         let o = f @@ decode_single_object decoder in
         enc (`Lexeme t);
@@ -208,16 +209,16 @@ let map_props f src dst =
         enc t;
         go ()
     | `Error e -> raise (Abort (`Error (loc (), e)))
-    | `End -> ignore @@ Jsonm.encode encoder `End
+    | `End -> ignore @@ J.encode encoder `End
     | `Await -> assert false
   in
   try Ok (go ()) with Abort e -> Error e
 
 let fold_geometry f init src =
-  let decoder = Jsonm.decoder src in
-  let loc () = Jsonm.decoded_range decoder in
+  let decoder = J.decoder src in
+  let loc () = J.decoded_range decoder in
   let rec go acc =
-    match Jsonm.decode decoder with
+    match J.decode decoder with
     | `Lexeme (`Name "geometry") -> (
         match G.Geometry.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
@@ -232,10 +233,10 @@ let fold_geometry f init src =
   try Ok (go init) with Abort e -> Error e
 
 let fold_props f init src =
-  let decoder = Jsonm.decoder src in
-  let loc () = Jsonm.decoded_range decoder in
+  let decoder = J.decoder src in
+  let loc () = J.decoded_range decoder in
   let rec go acc =
-    match Jsonm.decode decoder with
+    match J.decode decoder with
     | `Lexeme (`Name "properties") ->
         let acc' = f acc @@ decode_single_object decoder in
         go acc'
@@ -245,3 +246,4 @@ let fold_props f init src =
     | `Await -> assert false
   in
   try Ok (go init) with Abort e -> Error e
+end

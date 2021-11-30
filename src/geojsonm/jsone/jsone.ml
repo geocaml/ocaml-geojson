@@ -3,6 +3,9 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
+open EffectHandlers
+open EffectHandlers.Deep
+
 (* Braced non-terminals in comments refer to RFC 4627 non-terminals. *)
 
 let io_buffer_size = 65536                          (* IO_BUFFER_SIZE 4.0.0 *)
@@ -179,6 +182,28 @@ let pp_decode ppf = function
     let pr_style ppf = function `M -> pp ppf "`M" | `S -> pp ppf "`S" in
     pp ppf "@[`Comment @[(%a, %S)@]@]" pr_style style s
 
+(* The different read actions to perform *)
+type read = [
+  | `r_scomment
+  | `r_mcomment of bool
+  | `r_comment
+  | `r_ws_uncut
+  | `r_white_uncut
+  | `r_ws
+  | `r_white
+  | `r_u_escape
+  | `r_string
+  | `r_float
+  | `r_literal
+  | `r_value
+  | `r_arr_val
+  | `r_obj_name
+  | `r_end
+  | `r_lexeme
+  | `r_json
+  | `r_start
+]
+
 type decoder =
   { u : Uutf.decoder;                          (* Unicode character decoder. *)
     buf : Buffer.t;                           (* string accumulation buffer. *)
@@ -192,8 +217,7 @@ type decoder =
       [ `As of pos | `Os of pos ] list;
     mutable next_name : bool;    (* [true] if next decode should be [`Name]. *)
     mutable last_start : bool;      (* [true] if last lexeme was `As or `Os. *)
-    mutable k :                                     (* decoder continuation. *)
-      decoder -> [ decode | uncut ] }
+    }
 
 let baddc d c = Uutf.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int c)
 let badd d = Uutf.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int d.c)
@@ -210,11 +234,14 @@ let dpop d = match (spos d; epos d; d.stack) with
 | _ :: [] -> d.next_name <- false; d.stack <- []
 | [] -> assert false
 
+type _ eff += Read : (read * decoder) -> 'a eff
+let read r d = perform (Read (r, d))
+
 let ret_eoi _d = `End
-let ret (v : [< decode | uncut]) k d = d.k <- k; v
+let ret (v : [< decode | uncut]) _k _d = (* d.k <- k; *) v
 let rec readc k d = match Uutf.decode d.u with
-| `Uchar u -> d.c <- (Uchar.to_int u); k d
-| `End -> d.c <- ux_eoi; k d
+| `Uchar u -> d.c <- (Uchar.to_int u); read k d
+| `End -> d.c <- ux_eoi; read k d
 | `Await -> ret `Await (readc k) d
 | `Malformed bs -> d.c <- u_rep; epos d; ret (err_bytes bs) k d
 
@@ -392,6 +419,13 @@ let decoder ?encoding src =
     k = r_start }
 
 let decode_uncut d = d.uncut <- true; d.k d
+let decode f =
+  match_with f () 
+  {
+    retc = (fun () -> ());
+    exnc = (fun _ -> ());
+    effc = (fun _ -> None);
+  }
 let decode d = match (d.uncut <- false; d.k d) with
 | #decode as v -> (v :> [> decode])
 | `Comment _ | `White _ -> assert false
