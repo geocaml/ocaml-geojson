@@ -4,10 +4,10 @@ on:
     branches: [ main ]
 jobs:
   debian_10_4_13:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml
+    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@v1
     with:
       image: "ocaml/opam:debian-10-ocaml-4.13"
   debian_10_4_03:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml
+    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@v1
     with:
       image: "ocaml/opam:debian-10-ocaml-4.03"
