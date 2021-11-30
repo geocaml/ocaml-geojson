@@ -1,0 +1,39 @@
+# Reusable build
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+jobs:
+  build:
+  runs-on: ubuntu-latest
+    container:
+      image: ${{ inputs.image }}
+      env:
+        HOME: /home/opam
+      options: --user 1000
+    env:
+      HOME: /home/opam
+    defaults:
+      run:
+        working-directory: /home/opam
+    steps:
+    - run: mkdir -p /home/opam/package
+    - name: Cloning
+      run: git clone https://github.com/$GITHUB_REPOSITORY . && git checkout ${{ github.event.pull_request.head.sha }}
+      working-directory: /home/opam/package
+    - name: Pinning Packages
+      run: opam pin add -yn geojson.dev './' && opam pin add -yn geojsonm.dev './'
+      working-directory: /home/opam/package
+    - name: Installing external dependencies
+      run: opam depext -yt geojson.dev && opam depext -yt geojsonm.dev
+      working-directory: /home/opam/package
+    - name: Installing dependencies
+      run: opam install -t -y . --deps-only
+      working-directory: /home/opam/package
+    - name: Building, installing & testing
+      run: opam exec -- dune build @install @runtest
+      working-directory: /home/opam/package
+
+  
