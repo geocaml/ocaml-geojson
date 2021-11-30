@@ -3,11 +3,23 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
-  debian_10_4_13:
+  debian_11_4_13:
     uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
     with:
-      image: "ocaml/opam:debian-10-ocaml-4.13"
-  debian_10_4_03:
+      image: "ocaml/opam:debian-11-ocaml-4.13"
+  debian_11_4_03:
     uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
     with:
-      image: "ocaml/opam:debian-10-ocaml-4.03"
+      image: "ocaml/opam:debian-11-ocaml-4.03"
+  fedora_34_4_13:
+    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
+    with:
+      image: "ocaml/opam:fedora-34-ocaml-4.13"
+  alpine_13_4_13:
+    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
+    with:
+      image: "ocaml/opam:alpine-13-ocaml-4.13"
+  ubuntu_20_04_4_13:
+    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
+    with:
+      image: "ocaml/opam:ubuntu-20.04-ocaml-4.13"
