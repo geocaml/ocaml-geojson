@@ -5,9 +5,15 @@
 (rule
  (alias benche)
  (mode promote-until-clean)
- (targets out.geojson)
+ (targets out0.geojson out1.geojson)
  (deps ./bench.exe ../../test/geojsonm/expect/input/simple.geojson)
  (action
   (progn
-   (copy ../../test/geojsonm/expect/input/simple.geojson ./simple.geojson)
+   (copy ../../test/geojsonm/expect/input/simple.geojson ./simple0.geojson)
+   (copy ../../test/geojsonm/expect/input/simple.geojson ./simple1.geojson)
    (run ./bench.exe))))
+
+(rule
+ (alias benche)
+ (deps out0.geojson out1.geojson)
+ (action (diff out0.geojson out1.geojson)))

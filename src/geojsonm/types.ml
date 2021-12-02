@@ -8,9 +8,9 @@ module type Jsonm = sig
 
   val decoded_range : decoder -> (int * int) * (int * int)
 
-  type src = unit -> (bytes * int * int) option
+  type src
 
-  type dst = (bytes * int * int) option -> unit
+  type dst
 
   type encoding = [ `UTF_16 | `UTF_16BE | `UTF_16LE | `UTF_8 ]
 
