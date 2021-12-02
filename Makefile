@@ -1,6 +1,7 @@
 .PHONY: bench
 bench:
-	opam exec -- dune build @benche --force
+	dune clean
+	EIO_BACKEND=luv opam exec -- dune build --profile release @benche --force --no-buffer
 
 .PHONY: docs
 docs:

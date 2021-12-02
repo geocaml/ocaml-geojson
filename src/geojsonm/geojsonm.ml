@@ -23,6 +23,9 @@
    Most commmonly, the large size of a GeoJson document is because it is a feature collection
    containing many features, although it's probably not infeasible that there are huge documents
    containing a single feature with lots of geometry objects. *)
+
+module Uutfe = Uutfe
+module Jsone = Jsone
 module Make (J : Types.Jsonm) = struct
 
 module Err = struct

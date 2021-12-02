@@ -16,6 +16,8 @@
 (** A library for manipulating large GeoJson documents without reading the whole
     document into memory using the {!J} streaming, JSON parser. *)
 
+module Uutfe = Uutfe
+module Jsone = Jsone
 module Make (J : Types.Jsonm) : sig
   module Err : sig
     type location = (int * int) * (int * int)

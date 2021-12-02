@@ -1,8 +1,13 @@
 (executable
  (name bench)
- (libraries geojsonm))
+ (libraries eio eio_main geojsonm))
 
- (rule
-  (alias benche)
-  (deps ./bench.exe)
-  (action (run ./bench.exe)))
+(rule
+ (alias benche)
+ (mode promote-until-clean)
+ (targets out.geojson)
+ (deps ./bench.exe ../../test/geojsonm/expect/input/simple.geojson)
+ (action
+  (progn
+   (copy ../../test/geojsonm/expect/input/simple.geojson ./simple.geojson)
+   (run ./bench.exe))))

@@ -98,14 +98,14 @@ val pp_error : Format.formatter -> [< error] -> unit
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
 (** The type for Unicode encoding schemes. *)
 
-type src = [ `Channel of in_channel | `String of string | `Manual ]
+type src = unit -> (bytes * int * int) option
 (** The type for input sources. With a [`Manual] source the client
     must provide input with {!Manual.src}. *)
 
 type decoder
 (** The type for JSON decoders. *)
 
-val decoder :?encoding:[< encoding] -> [< src] -> decoder
+val decoder :?encoding:[< encoding] -> src -> decoder
 (** [decoder encoding src] is a JSON decoder that inputs from [src].
     [encoding] specifies the character encoding of the data. If unspecified
     the encoding is guessed as
@@ -146,14 +146,14 @@ val decoder_src : decoder -> src
 
 (** {1:encode Encode} *)
 
-type dst = [ `Channel of out_channel | `Buffer of Buffer.t | `Manual ]
+type dst = (bytes * int * int) option -> unit
 (** The type for output destinations. With a [`Manual] destination the
     client must provide output storage with {!Manual.dst}. *)
 
 type encoder
 (** The type for JSON encoders. *)
 
-val encoder : ?minify:bool -> [< dst] -> encoder
+val encoder : ?minify:bool -> dst -> encoder
 (** [encoder minify dst] is an encoder that outputs to [dst]. If
     [minify] is [true] (default) the output is made as compact as
     possible, otherwise the output is indented. If you want better
