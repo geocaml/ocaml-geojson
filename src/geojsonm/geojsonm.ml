@@ -183,8 +183,9 @@ let map_geometry f src dst =
             enc (`Lexeme t);
             encode_value encoder (G.Geometry.to_json g');
             go ())
-    | `Lexeme _ as t ->
+    | `Lexeme v as t ->
         enc t;
+        Format.printf "JSON %a" Jsonm.pp_lexeme v;
         go ()
     | `Error e -> raise (Abort (`Error (loc (), e)))
     | `End -> ignore @@ J.encode encoder `End

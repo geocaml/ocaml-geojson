@@ -37,17 +37,17 @@ let u_minus  = 0x2D (* - *)
 let u_slash  = 0x2F (* / *)
 let u_bslash = 0x5C (* \ *)
 let u_times  = 0x2A (* * *)
-let u_rep = Uchar.to_int Uutfe.u_rep
+let u_rep = Uchar.to_int Uutf.u_rep
 
 let must_escape u = u <= 0x1F || u = 0x22 || u = 0x5C
 let is_digit u = 0x30 <= u && u <= 0x39
 let is_hex_digit u =
   0x30 <= u && u <= 0x39 || 0x41 <= u && u <= 0x46 || 0x61 <= u && u <= 0x66
 
-let is_white = function            (* N.B. Uutfe normalizes U+000D to U+000A. *)
+let is_white = function            (* N.B. Uutf normalizes U+000D to U+000A. *)
 | 0x20 | 0x09 | 0x0A -> true | _ -> false
 
-let is_val_sep = function          (* N.B. Uutfe normalizes U+000D to U+000A. *)
+let is_val_sep = function          (* N.B. Uutf normalizes U+000D to U+000A. *)
 | 0x20 | 0x09 | 0x0A | 0x2C | 0x5D | 0x7D -> true | _ -> false
 
 (* Data model *)
@@ -116,7 +116,7 @@ let pp_cp ppf u = pp ppf "U+%04X" u
 let pp_uchar ppf u =
   if Uchar.to_int u <= 0x1F (* most control chars *) then pp_cp ppf (Uchar.to_int u) else
   let b = Buffer.create 4 in
-  Uutfe.Buffer.add_utf_8 b u;
+  Uutf.Buffer.add_utf_8 b u;
   pp ppf "'%s' (%a)" (Buffer.contents b) pp_cp (Uchar.to_int u)
 
 let pp_error ppf = function
@@ -165,7 +165,7 @@ let pp_error ppf = function
 
 type pos = int * int
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
-type src = unit -> (bytes * int * int) option
+type src = [ `Channel of in_channel | `String of string | `Manual ]
 type decode = [ `Await | `End | `Lexeme of lexeme | `Error of error ]
 type uncut = [ `Comment of [ `M | `S ] * string | `White of string ]
 
@@ -180,7 +180,7 @@ let pp_decode ppf = function
     pp ppf "@[`Comment @[(%a, %S)@]@]" pr_style style s
 
 type decoder =
-  { u : Uutfe.decoder;                          (* Unicode character decoder. *)
+  { u : Uutf.decoder;                          (* Unicode character decoder. *)
     buf : Buffer.t;                           (* string accumulation buffer. *)
     mutable uncut : bool;   (* [true] to bufferize comments and white space. *)
     mutable s_line : int;                          (* last saved start line. *)
@@ -192,14 +192,15 @@ type decoder =
       [ `As of pos | `Os of pos ] list;
     mutable next_name : bool;    (* [true] if next decode should be [`Name]. *)
     mutable last_start : bool;      (* [true] if last lexeme was `As or `Os. *)
-  }
+    mutable k :                                     (* decoder continuation. *)
+      decoder -> [ decode | uncut ] }
 
-let baddc d c = Uutfe.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int c)
-let badd d = Uutfe.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int d.c)
+let baddc d c = Uutf.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int c)
+let badd d = Uutf.Buffer.add_utf_8 d.buf (Uchar.unsafe_of_int d.c)
 let buf d = let t = Buffer.contents d.buf in (Buffer.clear d.buf; t)
-let dpos d = Uutfe.decoder_line d.u, Uutfe.decoder_col d.u
-let spos d = d.s_line <- Uutfe.decoder_line d.u; d.s_col <- Uutfe.decoder_col d.u
-let epos d = d.e_line <- Uutfe.decoder_line d.u; d.e_col <- Uutfe.decoder_col d.u
+let dpos d = Uutf.decoder_line d.u, Uutf.decoder_col d.u
+let spos d = d.s_line <- Uutf.decoder_line d.u; d.s_col <- Uutf.decoder_col d.u
+let epos d = d.e_line <- Uutf.decoder_line d.u; d.e_col <- Uutf.decoder_col d.u
 let stack_range d = match d.stack with [] -> assert false
 | `As (l,c) :: _ | `Os (l,c) :: _ -> d.s_line <- l; d.s_col <- c; epos d
 
@@ -210,221 +211,196 @@ let dpop d = match (spos d; epos d; d.stack) with
 | [] -> assert false
 
 let ret_eoi d = `End
-(* let ret (v : [< decode | uncut]) k d = d.k <- k; v *)
-let rec readc d = match Uutfe.decode d.u with
-| `Uchar u -> Printf.printf "CHAR: %c\n" (Uchar.to_char u); d.c <- (Uchar.to_int u)
-| `End -> d.c <- ux_eoi
-| `Await -> assert false
-| `Malformed bs -> d.c <- u_rep; epos d
+let ret (v : [< decode | uncut]) k d = d.k <- k; v
+let rec readc k d = match Uutf.decode d.u with
+| `Uchar u -> d.c <- (Uchar.to_int u); k d
+| `End -> d.c <- ux_eoi; k d
+| `Await -> ret `Await (readc k) d
+| `Malformed bs -> d.c <- u_rep; epos d; ret (err_bytes bs) k d
 
-(* ; ret (err_bytes bs) k d *)
+let rec r_scomment k d =               (* single line comment. // was eaten. *)
+  if (d.c <> u_nl && d.c <> ux_eoi) then (badd d; readc (r_scomment k) d) else
+  (epos d; ret (`Comment (`S, buf d)) (readc k) d)
 
-let rec r_scomment d =               (* single line comment. // was eaten. *)
-  if (d.c <> u_nl && d.c <> ux_eoi) then (badd d; readc d; r_scomment d) else
-  (epos d; (`Comment (`S, buf d)))
-
-let rec r_mcomment closing d =         (* multiline comment. /* was eaten. *)
-  if (d.c = ux_eoi) then (epos d; err_unclosed_comment ) else
+let rec r_mcomment closing k d =         (* multiline comment. /* was eaten. *)
+  if (d.c = ux_eoi) then (epos d; ret err_unclosed_comment ret_eoi d) else
   if closing then begin
-    if (d.c = u_slash) then (epos d; (`Comment (`M, buf d))) else
-    if (d.c = u_times) then (badd d; readc d; r_mcomment true d) else
-    (baddc d u_times; badd d; readc d; r_mcomment false d)
+    if (d.c = u_slash) then (epos d; ret (`Comment (`M, buf d)) (readc k) d)else
+    if (d.c = u_times) then (badd d; readc (r_mcomment true k) d) else
+    (baddc d u_times; badd d; readc (r_mcomment false k) d)
   end else begin
-    if (d.c = u_times) then (readc d; r_mcomment true d) else
-    (badd d; readc d; r_mcomment false d)
+    if (d.c = u_times) then readc (r_mcomment true k) d else
+    (badd d; readc (r_mcomment false k) d)
   end
 
-(* let r_comment d =                                 (* comment, / was eaten. *)
-  if d.c = u_slash then (readc d; r_scomment d) else
-  if d.c = u_times then (readc d; r_mcomment false d) else
-  (epos d; err_exp_comment)
+let r_comment k d =                                 (* comment, / was eaten. *)
+  if d.c = u_slash then readc (r_scomment k) d else
+  if d.c = u_times then readc (r_mcomment false k) d else
+  (epos d; ret err_exp_comment k d)
 
-let rec r_ws_uncut d =
-  if (is_white d.c) then (epos d; badd d; readc d; r_ws_uncut d) else
-  (* ret (`White (buf d)) k d *)
-  (* `White (buf d) *)
-  Buffer.clear d.buf;
-  ()
+let rec r_ws_uncut k d =
+  if (is_white d.c) then (epos d; badd d; readc (r_ws_uncut k) d) else
+  ret (`White (buf d)) k d
 
-let rec r_white_uncut d =                                (* {ws} / comment *)
-  (* Not sure about this! *)
-  if (is_white d.c) then (spos d; r_ws_uncut d; ) else
-  if (d.c = u_slash) then (spos d; readc d; r_comment d) else
-  (* r_white_uncut d *) ()
-   *)
+let rec r_white_uncut k d =                                (* {ws} / comment *)
+  if (is_white d.c) then (spos d; r_ws_uncut (r_white_uncut k) d) else
+  if (d.c = u_slash) then (spos d; readc (r_comment (r_white_uncut k)) d) else
+  k d
 
-let rec r_ws d = 
-  while (is_white d.c) do (readc d; r_ws d) done  (* {ws} *)
+let rec r_ws k d = if (is_white d.c) then readc (r_ws k) d else k d  (* {ws} *)
+let r_white k d = if d.uncut then r_white_uncut k d else r_ws k d
 
-(* TODO: Add uncut *)
-let r_white d = r_ws d
-
-let rec r_u_escape hi u count d =                      (* unicode escapes. *)
-  let error err d = baddc d u_rep; err in
+let rec r_u_escape hi u count k d =                      (* unicode escapes. *)
+  let error err k d = baddc d u_rep; ret err k d in
   if count > 0 then
-    if not (is_hex_digit d.c) then (epos d; ignore @@ error (err_not_hex d.c) d; readc d)
+    if not (is_hex_digit d.c) then (epos d; error (err_not_hex d.c) (readc k) d)
     else
     let u = u * 16 + (if d.c <= 0x39 (* 9 *) then d.c - 0x30 else
                       if d.c <= 0x46 (* F *) then d.c - 0x37 else d.c - 0x57)
     in
-    (epos d; readc d; ignore @@ (r_u_escape hi u (count - 1)) d)
+    (epos d; readc (r_u_escape hi u (count - 1) k) d)
   else match hi with
   | Some hi ->          (* combine high and low surrogate into scalar value. *)
-      if u < 0xDC00 || u > 0xDFFF then ignore @@ error (err_not_lo u) d else
+      if u < 0xDC00 || u > 0xDFFF then error (err_not_lo u) k d else
       let u = ((((hi land 0x3FF) lsl 10) lor (u land 0x3FF)) + 0x10000) in
-      (baddc d u)
-      (* error (err_lone_lo u) d *)
+      (baddc d u; k d)
   | None ->
-      if u < 0xD800 || u > 0xDFFF then ignore @@ error (err_lone_lo u) d else
-      if u > 0xDBFF then ignore @@ error (err_lone_lo u) d else
-      if d.c <> u_bslash then ignore @@ error (err_lone_hi u) d else
-      (readc d; (fun d ->
-        if d.c <> 0x75 (* u *) then ignore @@ error (err_lone_hi u) d else
-        (readc d; (r_u_escape (Some u) 0 4) d)) d)
+      if u < 0xD800 || u > 0xDFFF then (baddc d u; k d) else
+      if u > 0xDBFF then error (err_lone_lo u) k d else
+      if d.c <> u_bslash then error (err_lone_hi u) k d else
+      readc (fun d ->
+        if d.c <> 0x75 (* u *) then error (err_lone_hi u) (r_escape k) d else
+        readc (r_u_escape (Some u) 0 4 k) d) d
 
-and r_escape d = match d.c with
-| 0x22 (* '' *)-> baddc d u_quot; readc d
-| 0x5C (* \ *) -> baddc d u_bslash; readc d
-| 0x2F (* / *) -> baddc d u_slash; readc d
-| 0x62 (* b *) -> baddc d 0x08; readc d
-| 0x66 (* f *) -> baddc d 0x0C; readc d
-| 0x6E (* n *) -> baddc d u_nl; readc d
-| 0x72 (* r *) -> baddc d 0x0D; readc d
-| 0x74 (* t *) -> baddc d 0x09; readc d
-| 0x75 (* u *) -> readc d; ignore @@ (r_u_escape None 0 4) d
-| c -> epos d; baddc d u_rep; ignore (err_not_esc c); readc d
+and r_escape k d = match d.c with
+| 0x22 (* '' *)-> baddc d u_quot; readc k d
+| 0x5C (* \ *) -> baddc d u_bslash; readc k d
+| 0x2F (* / *) -> baddc d u_slash; readc k d
+| 0x62 (* b *) -> baddc d 0x08; readc k d
+| 0x66 (* f *) -> baddc d 0x0C; readc k d
+| 0x6E (* n *) -> baddc d u_nl; readc k d
+| 0x72 (* r *) -> baddc d 0x0D; readc k d
+| 0x74 (* t *) -> baddc d 0x09; readc k d
+| 0x75 (* u *) -> readc (r_u_escape None 0 4 k) d
+| c -> epos d; baddc d u_rep; ret (err_not_esc c) (readc k) d
 
-let rec r_string d =                                (* {string}, '' eaten. *)
-  if d.c = ux_eoi then (epos d; ignore err_unclosed_string; ignore @@ ret_eoi d) else
-  if not (must_escape d.c) then (badd d; readc d; r_string d) else
-  if d.c = u_quot then (epos d; readc d) else
-  if d.c = u_bslash then (readc d; r_escape d; r_string d) else
-  (epos d; baddc d u_rep; 
-  let e = err_str_char d.c in readc d; ignore @@ r_string d; ignore e)
+let rec r_string k d =                                (* {string}, '' eaten. *)
+  if d.c = ux_eoi then (epos d; ret err_unclosed_string ret_eoi d) else
+  if not (must_escape d.c) then (badd d; readc (r_string k) d) else
+  if d.c = u_quot then (epos d; readc k d) else
+  if d.c = u_bslash then readc (r_escape (r_string k)) d else
+  (epos d; baddc d u_rep; ret (err_str_char d.c) (readc (r_string k)) d)
 
-let rec r_float d =                                            (* {number} *)
+let rec r_float k d =                                            (* {number} *)
   if not (is_val_sep d.c) && d.c <> ux_eoi
-  then (epos d; badd d; readc d; r_float d) else
+  then (epos d; badd d; readc (r_float k) d) else
   let s = buf d in
-  try (`Lexeme (`Float (float_of_string s)))with
-  | Failure _ -> err_number s
+  try ret (`Lexeme (`Float (float_of_string s))) k d with
+  | Failure _ -> ret (err_number s) k d
 
-let rec r_literal d =                         (* {true} / {false} / {null} *)
+let rec r_literal k d =                         (* {true} / {false} / {null} *)
   if not (is_val_sep d.c) && d.c <> ux_eoi
-  then (epos d; badd d; readc d; r_literal d) else
+  then (epos d; badd d; readc (r_literal k) d) else
   match buf d with
-  | "true" -> (`Lexeme (`Bool true))
-  | "false" -> (`Lexeme (`Bool false))
-  | "null" -> (`Lexeme `Null)
-  | s -> (err_literal s)
+  | "true" -> ret (`Lexeme (`Bool true)) k d
+  | "false" -> ret (`Lexeme (`Bool false)) k d
+  | "null" -> ret (`Lexeme `Null) k d
+  | s -> ret (err_literal s) k d
 
-let rec r_value err d = match d.c with                          (* {value} *)
+let rec r_value err k d = match d.c with                          (* {value} *)
 | 0x5B (* [ *) ->                                           (* {begin-array} *)
     spos d; epos d; d.last_start <- true;
     d.stack <- `As (dpos d) :: d.stack;
-    (* ret (`Lexeme `As) (readc k) d *)
-    let v = `Lexeme `As in readc d; v
+    ret (`Lexeme `As) (readc k) d
 | 0x7B (* { *) ->                                          (* {begin-object} *)
     spos d; epos d; d.last_start <- true; d.next_name <- true;
     d.stack <- `Os (dpos d) :: d.stack;
-    (* ret (`Lexeme `Os) (readc k) d *)
-    let v = `Lexeme `Os in readc d; v
+    ret (`Lexeme `Os) (readc k) d
 | 0x22 (* '' *) ->
-    let lstring d = (`Lexeme (`String (buf d))) in
-    spos d; readc d; ignore @@ r_string d; lstring d
+    let lstring k d = ret (`Lexeme (`String (buf d))) k d in
+    spos d; readc (r_string (lstring k)) d
 | 0x66 (* f *) | 0x6E (* n *) |  0x74 (* t *) ->
-    spos d; r_literal d
-| u when is_digit u || u = u_minus -> spos d; r_float d
-| u -> err d
+    spos d; r_literal k d
+| u when is_digit u || u = u_minus -> spos d; r_float k d
+| u -> err k d
 
-let rec discard_to c1 c2 err d =
-  Printf.printf "%c %c\n" (Char.chr c1) (Char.chr c2);
-  if d.c = c1 || d.c = c2 || d.c = ux_eoi then err else
-  (epos d; readc d; (discard_to c1 c2 err) d)
+let rec discard_to c1 c2 err k d =
+  if d.c = c1 || d.c = c2 || d.c = ux_eoi then ret err k d else
+  (epos d; readc (discard_to c1 c2 err k) d)
 
-let r_arr_val d =          (* [{value-separator}] {value} / {end-array} *)
-  let nxval err d = spos d; discard_to u_comma u_rbrack err d in
+let r_arr_val k d =          (* [{value-separator}] {value} / {end-array} *)
+  let nxval err k d = spos d; discard_to u_comma u_rbrack err k d in
   let last_start = d.last_start in
   d.last_start <- false;
-  if d.c = ux_eoi then (stack_range d; ignore @@ err_unclosed_arr; ret_eoi d) else
-  if d.c = u_rbrack then (dpop d; readc d; (`Lexeme `Ae)) else
-  if last_start then r_value (nxval err_exp_arr_fst) d else
-  if d.c = u_comma then (readc d; r_white d; r_value (nxval err_exp_value) d)
-  else nxval err_exp_arr_nxt d
+  if d.c = ux_eoi then (stack_range d; ret err_unclosed_arr ret_eoi d) else
+  if d.c = u_rbrack then (dpop d; ret (`Lexeme `Ae) (readc k) d) else
+  if last_start then r_value (nxval err_exp_arr_fst) k d else
+  if d.c = u_comma then readc (r_white (r_value (nxval err_exp_value) k)) d
+  else nxval err_exp_arr_nxt k d
 
-let nxmem err d =
-  Printf.printf "NXM: %c" (Char.chr d.c);
-  spos d; d.next_name <- true; discard_to u_comma u_rbrace err d
+let nxmem err k d =
+  spos d; d.next_name <- true; discard_to u_comma u_rbrace err k d
 
-let r_obj_value d =                        (* {name-separator} {value} *)
+let r_obj_value k d =                        (* {name-separator} {value} *)
   d.next_name <- true;
-  if d.c = u_colon then (readc d; r_white d; r_value (nxmem err_exp_value) d)
-  else nxmem err_exp_nsep d
+  if d.c = u_colon then readc (r_white (r_value (nxmem err_exp_value) k)) d
+  else nxmem err_exp_nsep k d
 
-let r_obj_name d =          (* [{value-separator}] string / end-object *)
-  let r_name err d =
-    let ln d = (`Lexeme (`Name (buf d))) in
-    if d.c <> u_quot then nxmem err d else (spos d; readc d; ignore @@ r_string d; ln d)
+let r_obj_name k d =          (* [{value-separator}] string / end-object *)
+  let r_name err k d =
+    let ln k d = ret (`Lexeme (`Name (buf d))) k d in
+    if d.c <> u_quot then nxmem err k d else (spos d; readc (r_string (ln k)) d)
   in
-  Printf.printf "OBJ: %c" (Char.chr d.c);
   let last_start = d.last_start in
   d.last_start <- false; d.next_name <- false;
-  if d.c = ux_eoi then (stack_range d; ignore err_unclosed_obj; ret_eoi d) else
-  if d.c = u_rbrace then (dpop d; readc d; (`Lexeme `Oe)) else
-  if last_start then r_name err_exp_obj_fst d else
-  if d.c = u_comma then (readc d; r_white d; r_name err_exp_name d) else
-  nxmem err_exp_obj_nxt d
+  if d.c = ux_eoi then (stack_range d; ret err_unclosed_obj ret_eoi d) else
+  if d.c = u_rbrace then (dpop d; ret (`Lexeme `Oe) (readc k) d) else
+  if last_start then r_name err_exp_obj_fst k d else
+  if d.c = u_comma then readc (r_white (r_name err_exp_name k)) d else
+  nxmem err_exp_obj_nxt k d
 
 let r_end d =                                              (* end of input *)
-  if d.c = ux_eoi then ret_eoi d else
-  let drain d = spos d; discard_to ux_eoi ux_eoi err_exp_eoi d in
-  drain d
+  if d.c = ux_eoi then ret `End ret_eoi d else
+  let drain k d = spos d; discard_to ux_eoi ux_eoi err_exp_eoi k d in
+  drain ret_eoi d
 
 let rec r_lexeme d = match d.stack with
-| `As _ :: _ -> 
-  print_endline "AR";
-  r_white d; r_arr_val d
-| `Os (i, j) :: _ ->
-    Printf.printf "%i:%i\n" i j;
-    if d.next_name then (print_endline "JELLO"; r_white d;r_obj_name d) else(
-    (r_white d; r_obj_value d))
-| [] -> r_white d; r_end d
+| `As _ :: _ -> r_white (r_arr_val r_lexeme) d
+| `Os _ :: _ ->
+    if d.next_name then r_white (r_obj_name r_lexeme) d else
+    r_white (r_obj_value r_lexeme) d
+| [] -> 
+  Printf.printf "COL: %i\n" d.s_col;
+  r_white (r_end) d
 
-let discard_to_white d =
-  while not (is_white d.c || d.c = ux_eoi) do 
-    epos d; readc d
-  done
-  
+let rec discard_to_white err k d =
+  if is_white d.c || d.c = ux_eoi then ret err k d else
+  (epos d; readc (discard_to_white err k) d)
 
-let rec r_json d =                                              (* {value} *)
-  let err d = 
-    spos d; discard_to_white d; r_white d; r_json d 
-  in
-  if d.c <> ux_eoi then r_value err d else err_exp_json
+let rec r_json k d =                                              (* {value} *)
+  let err k d = spos d; discard_to_white err_exp_json (r_white (r_json k)) d in
+  if d.c <> ux_eoi then r_value err k d else ret err_exp_json k d
 
 let r_start d =                                            (* start of input *)
-  let bom d = 
-    if Uutfe.decoder_removed_bom d.u 
-    then err_bom 
-    else (r_white d; ignore @@ r_json d; r_lexeme d) 
-  in
-  readc d; bom d
+  let bom k d = if Uutf.decoder_removed_bom d.u then ret err_bom k d else k d in
+  readc (bom (r_white (r_json r_lexeme))) d
 
 let nln = `ASCII (Uchar.unsafe_of_int 0x000A)
 let decoder ?encoding src =
-  let u = Uutfe.decoder ?encoding ~nln src in
+  let u = Uutf.decoder ?encoding ~nln src in
   { u; buf = Buffer.create 1024; uncut = false;
     s_line = 1; s_col = 0; e_line = 1; e_col = 0;
-    c = ux_soi; next_name = false; last_start = false; stack = []; }
+    c = ux_soi; next_name = false; last_start = false; stack = [];
+    k = r_start }
 
-let decode_uncut d = d.uncut <- true; r_start d
-let rec decode d = match (d.uncut <- false; r_start d) with
+let decode_uncut d = d.uncut <- true; d.k d
+let rec decode d = match (d.uncut <- false; d.k d) with
 | #decode as v -> (v :> [> decode])
 | `Comment _ | `White _ -> assert false
 
-let decoder_src d = Uutfe.decoder_src d.u
+let decoder_src d = Uutf.decoder_src d.u
 let decoded_range d = (d.s_line, d.s_col), (d.e_line, d.e_col)
-let decoder_encoding d = match Uutfe.decoder_encoding d.u with
+let decoder_encoding d = match Uutf.decoder_encoding d.u with
 | #encoding as enc -> enc
 | `US_ASCII | `ISO_8859_1 -> assert false
 
@@ -449,7 +425,7 @@ let expect_json v =
 let expect_lend lstart v  =
   expect (if lstart = `As then "`Lexeme `Ae" else "`Lexeme `Oe") v
 
-type dst = (bytes * int * int) option -> unit
+type dst = [ `Channel of out_channel | `Buffer of Buffer.t | `Manual ]
 type encode = [ `Await | `End | `Lexeme of lexeme ]
 type encoder =
   { dst : dst;                                        (* output destination. *)
@@ -471,15 +447,16 @@ let dst e s j l =                                     (* set [e.o] with [s]. *)
   e.o <- s; e.o_pos <- j; e.o_max <- j + l - 1
 
 let partial k e = function `Await -> k e | v -> expect_await v
-let flush e ~stop =
-  if stop
-  then (if e.o_pos <> 0 then e.dst (Some (e.o, 0, e.o_pos)); e.dst None)
-  else e.dst (Some (e.o, 0, e.o_pos));
-  e.o_pos <- 0
+let flush k e = match e.dst with  (* get free space in [d.o] and [k]ontinue. *)
+| `Manual -> e.k <- partial k; `Partial
+| `Channel oc -> output oc e.o 0 e.o_pos; e.o_pos <- 0; k e
+| `Buffer b ->
+    let o = Bytes.unsafe_to_string e.o in
+    Buffer.add_substring b o 0 e.o_pos; e.o_pos <- 0; k e
 
 
 let rec writeb b k e =                     (* write byte [b] and [k]ontinue. *)
-  if e.o_pos > e.o_max then (flush e ~stop:false; writeb b k e) else
+  if e.o_pos > e.o_max then flush (writeb b k) e else
   (unsafe_set_byte e.o e.o_pos b; e.o_pos <- e.o_pos + 1; k e)
 
 let rec writes s j l k e =      (* write [l] bytes from [s] starting at [j]. *)
@@ -487,7 +464,7 @@ let rec writes s j l k e =      (* write [l] bytes from [s] starting at [j]. *)
   if rem >= l then (unsafe_blit s j e.o e.o_pos l; e.o_pos <- e.o_pos + l; k e)
   else begin
     unsafe_blit s j e.o e.o_pos rem; e.o_pos <- e.o_pos + rem;
-    flush e ~stop:false; writes s (j + rem) (l - rem) k e
+    flush (writes s (j + rem) (l - rem) k) e
   end
 
 let rec writebuf j l k e =  (* write [l] bytes from [e.buf] starting at [j]. *)
@@ -496,7 +473,7 @@ let rec writebuf j l k e =  (* write [l] bytes from [e.buf] starting at [j]. *)
   then (Buffer.blit e.buf j e.o e.o_pos l; e.o_pos <- e.o_pos + l; k e)
   else begin
     Buffer.blit e.buf j e.o e.o_pos rem; e.o_pos <- e.o_pos + rem;
-    flush e ~stop:false; writebuf (j + rem) (l - rem) k e
+    flush (writebuf (j + rem) (l - rem) k) e
   end
 
 let w_indent k e =
@@ -507,7 +484,7 @@ let w_indent k e =
       e.o_pos <- max + 1
     in
     let rem = o_rem e in
-    if rem < indent then (spaces e rem; flush e ~stop:false; loop (indent - rem) k e) else
+    if rem < indent then (spaces e rem; flush (loop (indent - rem) k) e) else
     (spaces e indent; k e)
   in
   loop (e.nest * 2) k e
@@ -605,7 +582,7 @@ let rec encode_ k e = function
 | `Lexeme l ->
     if e.stack = [] then expect_end l else w_lexeme k e l
 | `End as v ->
-    if e.stack = [] then (flush e ~stop:true; k e) else expect_lend (List.hd e.stack) v
+    if e.stack = [] then flush k e else expect_lend (List.hd e.stack) v
 | `White w ->
     writes w 0 (String.length w) k e
 | `Comment (`S, c) ->
@@ -617,16 +594,18 @@ let rec encode_ k e = function
 let rec encode_loop e = e.k <- encode_ encode_loop; `Ok
 let rec encode_json e = function  (* first [k] to start with [`Os] or [`As]. *)
 | `Lexeme (`Null | `Bool _ | `Float _ | `String _ | `As | `Os as l) ->
-    w_value ~in_obj:false l encode_loop e
+    w_value false l encode_loop e
 | `End | `Lexeme _ as v -> expect_json v
 | `White _ | `Comment _ as v -> encode_ (fun e -> e.k <- encode_json; `Ok) e v
 | `Await -> `Ok
 
 let encoder ?(minify = true) dst =
-  let o = Bytes.create io_buffer_size in
-  let o_max = Bytes.length o - 1 in
-  if o_max = 0 then invalid_arg "buf's length is empty" else
-  { dst; minify; o; o_pos = 0; o_max; buf = Buffer.create 30;
+  let o, o_pos, o_max = match dst with
+  | `Manual -> Bytes.empty, 1, 0                   (* implies [o_rem e = 0]. *)
+  | `Buffer _
+  | `Channel _ -> Bytes.create io_buffer_size, 0, io_buffer_size - 1
+  in
+  { dst = (dst :> dst); minify; o; o_pos; o_max; buf = Buffer.create 30;
     stack = []; nest = 0; next_name = false; last_start = false;
     k = encode_json }
 
@@ -637,7 +616,7 @@ let encoder_minify e = e.minify
 (* Manual *)
 
 module Manual = struct
-  let src d = Uutfe.Manual.src d.u
+  let src d = Uutf.Manual.src d.u
   let dst = dst
   let dst_rem = o_rem
 end

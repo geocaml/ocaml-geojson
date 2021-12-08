@@ -31,7 +31,7 @@
   type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
   type decoder_encoding = [ encoding | `US_ASCII | `ISO_8859_1 ]
   
-  let encoding_of_string s = match String.uppercase s with      (* IANA names. *)
+  let encoding_of_string s = match String.uppercase_ascii s with      (* IANA names. *)
   | "UTF-8" -> Some `UTF_8
   | "UTF-16" -> Some `UTF_16
   | "UTF-16LE" -> Some `UTF_16LE
