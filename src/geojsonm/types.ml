@@ -17,6 +17,6 @@ module type Jsonm = sig
   val decoder : ?encoding:[< encoding ] -> src -> decoder
   val encoder : ?minify:bool -> dst -> encoder
   
-  val decode : decoder -> [> `Await | `Lexeme of lexeme | `End | `Error of error ]
+  val decode : decoder -> [ `Await | `Lexeme of lexeme | `End | `Error of error ]
   val encode : encoder -> [ `Lexeme of lexeme | `End ] -> [`Ok | `Partial]
 end

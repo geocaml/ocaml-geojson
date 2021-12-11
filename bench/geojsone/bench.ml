@@ -73,5 +73,13 @@ let run_eff () =
 let () =
   (* TODO: Run tests multiple times and average *)
   normal_main ();
+  (* run_eff (); *)
+  Sys.remove "out1.geojson";
+  (* Sys.remove "out0.geojson"; *)
+  normal_main ();
+  (* run_eff (); *)
+  Sys.remove "out1.geojson";
+  (* Sys.remove "out0.geojson"; *)
+  normal_main ();
   run_eff ();
   

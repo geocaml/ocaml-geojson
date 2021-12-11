@@ -112,7 +112,7 @@ val decoder :?encoding:[< encoding] -> src -> decoder
     {{:http://tools.ietf.org/html/rfc4627#section-3}suggested} by
     the old RFC4627 standard. *)
 
-val decode : decoder -> [> `Await | `Lexeme of lexeme | `End | `Error of error ]
+val decode : decoder -> [ `Await | `Lexeme of lexeme | `End | `Error of error ]
 (** [decode d] is:
     {ul
     {- [`Await] if [d] has a [`Manual] source and awaits for more input.
