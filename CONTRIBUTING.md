@@ -2,7 +2,7 @@
 
 ## OCaml and opam
 
-After following [these instructions for setting up OCaml with opam](https://v3.ocaml.org/learn/up-and-running-with-ocaml) you should be in a position to start building this
+After following [these instructions for setting up OCaml with opam](https://v3.ocaml.org/docs/up-and-running) you should be in a position to start building this
 repository. Refer to the following section for cloning the repository using git.
 
 Once you have that set up to install the dependencies you can run 
