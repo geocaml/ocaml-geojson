@@ -6,6 +6,18 @@ on:
     # Prime the caches every Monday
     - cron: 0 1 * * MON
 jobs:
+  lint-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use OCaml 4.13.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.13.x
+          dune-cache: true
+      - name: Lint fmt
+        uses: ocaml/setup-ocaml/lint-fmt@v2
   build:
     strategy:
       fail-fast: false
@@ -26,6 +38,4 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
       - run: opam install . --deps-only --with-test
-      - run: opam install -y ocamlformat.0.20.1
-      - run: opam exec -- dune build @fmt
       - run: opam exec -- dune build @install @runtest
