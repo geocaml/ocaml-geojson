@@ -1,6 +1,5 @@
 open Bechamel
 open Toolkit
-open Extension
 
 module Ezjsonm_parser = struct
   type t = Ezjsonm.value

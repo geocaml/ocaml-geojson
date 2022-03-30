@@ -31,4 +31,11 @@
    jsonm 
    ezjsonm))
 
+(package
+ (name extension)
+ (synopsis "Library to extend functionalit of Ezjsonm")
+ (description "This Extension library adds the find_opt function to earlier versions of Ezjsonm")
+ (depends
+   (ezjsonm  :with-test)))
+
 (using mdx 0.1)
