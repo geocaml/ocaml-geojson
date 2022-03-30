@@ -95,15 +95,11 @@ let test_multi_point () =
       @@ MultiPoint.coordinates coords)
   in
 
-  Alcotest.(check (array @@array (float 0.)))
+  Alcotest.(check (array @@ array (float 0.)))
     "same point"
-      [|
-        [| 100.0; 0.0 |];
-        [| 101.0; 1.0 |];
-      |]
-     t;
+    [| [| 100.0; 0.0 |]; [| 101.0; 1.0 |] |]
+    t;
   Alcotest.(check ezjsonm) "same json" json json'
-
 
 let geojson =
   Alcotest.testable
@@ -131,8 +127,10 @@ let test_random () =
 let () =
   Alcotest.run "geojson"
     [
-      ("geometry", [ Alcotest.test_case "multi-line" `Quick test_multi_line;
-                   Alcotest.test_case "multi-point" `Quick test_multi_point;]
-      );
+      ( "geometry",
+        [
+          Alcotest.test_case "multi-line" `Quick test_multi_line;
+          Alcotest.test_case "multi-point" `Quick test_multi_point;
+        ] );
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
     ]
