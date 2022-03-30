@@ -81,6 +81,30 @@ let test_multi_line () =
     t;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_multi_point () =
+  let s = read_file "files/valid/multipoint.json" in
+  let json = Ezjsonm.value_from_string s in
+  let geo = Geojson.of_json json in
+  let coords =
+    match geo with Ok (Geometry (MultiPoint p)) -> p | _ -> assert false
+  in
+  let json' = Geojson.Geometry.MultiPoint.to_json coords in
+  let t =
+    Geojson.Geometry.(
+      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      @@ MultiPoint.coordinates coords)
+  in
+
+  Alcotest.(check (array @@array (float 0.)))
+    "same point"
+      [|
+        [| 100.0; 0.0 |];
+        [| 101.0; 1.0 |];
+      |]
+     t;
+  Alcotest.(check ezjsonm) "same json" json json'
+
+
 let geojson =
   Alcotest.testable
     (fun ppf p -> Fmt.pf ppf "%s" (Ezjsonm.value_to_string (Geojson.to_json p)))
@@ -108,5 +132,6 @@ let () =
   Alcotest.run "geojson"
     [
       ("geometry", [ Alcotest.test_case "multi-line" `Quick test_multi_line ]);
+      ("multipoint", [ Alcotest.test_case "multi-point" `Quick test_multi_point ]);
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
     ]
