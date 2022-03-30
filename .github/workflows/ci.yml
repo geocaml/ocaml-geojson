@@ -1,27 +1,30 @@
-name: ocaml-ci
+name: CI
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+  push:
+  schedule:
+    # Prime the caches every Monday
+    - cron: 0 1 * * MON
 jobs:
-  debian_11_4_13:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
-    with:
-      image: "ocaml/opam:debian-11-ocaml-4.13"
-  debian_11_4_03:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
-    with:
-      image: "ocaml/opam:debian-11-ocaml-4.03"
-  fedora_34_4_13:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
-    with:
-      image: "ocaml/opam:fedora-34-ocaml-4.13"
-  alpine_13_4_13:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
-    with:
-      image: "ocaml/opam:alpine-3.13-ocaml-4.13"
-  ubuntu_20_04_4_13:
-    uses: patricoferris/ocaml-geojson/.github/workflows/build.yml@daa0cb26aeba3b965c7abd4a6b0455f883c0a2bf
-    with:
-      image: "ocaml/opam:ubuntu-20.04-ocaml-4.13"
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          # - macos-latest
+          - ubuntu-latest
+          # - windows-latest
+        ocaml-compiler:
+          - 4.03.x
+          - 4.13.x
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+      - run: opam install . --deps-only --with-test
+      - run: opam exec -- dune build
+      - run: opam exec -- dune runtest
