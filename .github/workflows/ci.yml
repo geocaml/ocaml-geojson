@@ -26,4 +26,6 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
       - run: opam install . --deps-only --with-test
+      - run: opam install -y ocamlformat.0.20.1
+      - run: opam exec -- dune build @fmt
       - run: opam exec -- dune build @install @runtest

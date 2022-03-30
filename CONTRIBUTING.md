@@ -23,7 +23,7 @@ And to run the tests (which are in the `test` directory) run:
 dune runtest
 ```
 
-If you hit any problems please feel free to open an issue.
+If you hit any problems please feel free to open an issue. Please also run the formatter on the code too with `dune build @fmt --auto`, you might need to install the correct version of `ocamlformat`.
 
 ## Git and GitHub workflow
 
