@@ -4,10 +4,12 @@ open Toolkit
 module Ezjsonm_parser = struct
   type t = Ezjsonm.value
 
+  let find_opt t path =
+    try Some (Ezjsonm.find t path) with Not_found -> None
   let catch_err f v =
     try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
 
-  let find = Ezjsonm.find_opt
+  let find = find_opt
   let to_string t = catch_err Ezjsonm.get_string t
   let string = Ezjsonm.string
   let to_float t = catch_err Ezjsonm.get_float t
