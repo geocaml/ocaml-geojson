@@ -19,6 +19,8 @@
  (description "Geojson is a 'schema' for JSON to describe geospatial information. 
   This library provides a functor for building a module for manipulating and parsing Geojson into OCaml.")
  (depends
+   (brr :with-test)
+   (bechamel-notty (and (>= 0.1.0) :with-test))
    (alcotest :with-test)
    (ezjsonm  :with-test)))
 
