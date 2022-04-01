@@ -108,9 +108,9 @@ module Make (J : Geojson_intf.Json) = struct
           ([|max x.(0) y.(0); max x.(1) y.(1); max x.(2) y.(2)|]) in
         Some (Array.append 
         (Array.fold_left 
-          minValues [|180.; 90.|] arr) 
+          minValues arr.(0) arr) 
         (Array.fold_left 
-          maxValues[|-180.;- 90.|] arr)
+          maxValues arr.(0) arr)
       )) with e -> None
 
       let of_json json = parse_by_type json parse_coords typ
