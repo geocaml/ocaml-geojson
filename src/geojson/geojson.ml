@@ -98,14 +98,20 @@ module Make (J : Geojson_intf.Json) = struct
       let parse_coords coords =
         try J.to_array (decode_or_err Point.parse_coords) coords
         with Failure m -> Error (`Msg m)
-      let bbox arr = try Some (Array.append 
+      let bbox arr = 
+        try
+        (let minValues x y = if Array.length x = 2 then
+          ([|min x.(0) y.(0); min x.(1) y.(1)|]) else
+          ([|min x.(0) y.(0); min x.(1) y.(1); min x.(2) y.(2) |]) in
+        let maxValues x y = if Array.length x = 2 then
+          ([|max x.(0) y.(0); max x.(1) y.(1)|]) else
+          ([|max x.(0) y.(0); max x.(1) y.(1); max x.(2) y.(2)|]) in
+        Some (Array.append 
         (Array.fold_left 
-          (fun x y -> [|min x.(0) y.(0); min x.(1) y.(1)|]) 
-          [|180.; 90.|] arr) 
+          minValues [|180.; 90.|] arr) 
         (Array.fold_left 
-          (fun x y ->  [|max x.(0) y.(0); max x.(1) y.(1)|]) 
-          [|-180.;- 90.|] arr)
-      ) with e -> None
+          maxValues[|-180.;- 90.|] arr)
+      )) with e -> None
 
       let of_json json = parse_by_type json parse_coords typ
 
@@ -132,14 +138,7 @@ module Make (J : Geojson_intf.Json) = struct
           Error (`Msg "LineStrings should have two or more points")
         else Ok arr
 
-      let bbox arr = try Some (Array.append 
-        (Array.fold_left 
-          (fun x y -> [|min x.(0) y.(0); min x.(1) y.(1)|]) 
-          [|180.; 90.|] arr) 
-        (Array.fold_left 
-          (fun x y ->  [|max x.(0) y.(0); max x.(1) y.(1)|]) 
-          [|-180.;- 90.|] arr)
-      ) with e -> None
+      let bbox arr = MultiPoint.bbox arr
       let of_json json = parse_by_type json parse_coords typ
 
       let to_json positions =
@@ -164,14 +163,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let bbox arr = 
         let newArr = Array.fold_left (fun x y -> Array.append x y) [||] arr in
-        try Some (Array.append 
-        (Array.fold_left 
-          (fun x y -> [|min x.(0) y.(0); min x.(1) y.(1)|]) 
-          [|180.; 90.|] newArr)
-        (Array.fold_left 
-          (fun x y ->  [|max x.(0) y.(0); max x.(1) y.(1)|]) 
-          [|-180.;- 90.|] newArr)
-      ) with e -> None
+        LineString.bbox newArr
       let of_json json = parse_by_type json parse_coords typ
 
       let to_json positions =
@@ -204,14 +196,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let bbox arr = 
         let newArr = Array.fold_left (fun x y -> Array.append x y) [||] arr in
-        try Some (Array.append 
-        (Array.fold_left 
-          (fun x y -> [|min x.(0) y.(0); min x.(1) y.(1)|]) 
-          [|180.; 90.|] newArr)
-        (Array.fold_left 
-          (fun x y ->  [|max x.(0) y.(0); max x.(1) y.(1)|]) 
-          [|-180.;- 90.|] newArr)
-      ) with e -> None
+        LineString.bbox newArr
 
       let of_json json = parse_by_type json parse_coords typ
 
@@ -236,15 +221,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let bbox arr = 
         let outerArr = Array.fold_left (fun x y -> Array.append x y) [||] arr in
-        let newArr = Array.fold_left (fun x y -> Array.append x y) [||] outerArr in
-        try Some (Array.append 
-        (Array.fold_left 
-          (fun x y -> [|min x.(0) y.(0); min x.(1) y.(1)|]) 
-          [|180.; 90.|] newArr)
-        (Array.fold_left 
-          (fun x y ->  [|max x.(0) y.(0); max x.(1) y.(1)|]) 
-          [|-180.;- 90.|] newArr)
-      ) with e -> None
+        Polygon.bbox outerArr
 
       let of_json json = parse_by_type json parse_coords typ
 
