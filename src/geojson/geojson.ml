@@ -81,7 +81,8 @@ module Make (J : Geojson_intf.Json) = struct
       let position = Fun.id
       let v position = position
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
-      let bbox arr = try Some (Array.append arr arr) with e -> None
+      let bbox arr = try Some (Array.append arr arr) with e -> match e with
+      | _ -> None
       let of_json json = parse_by_type json parse_coords typ
       let to_json position =
         J.obj
@@ -111,7 +112,8 @@ module Make (J : Geojson_intf.Json) = struct
           minValues arr.(0) arr) 
         (Array.fold_left 
           maxValues arr.(0) arr)
-      )) with e -> None
+      )) with e -> match e with
+      | _ -> None
 
       let of_json json = parse_by_type json parse_coords typ
 
