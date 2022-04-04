@@ -265,44 +265,21 @@ module Make (J : Geojson_intf.Json) = struct
   end
 
   module Feature = struct
-    type t = Geometry.t option * json option
-
-    let geometry = fst
-    let properties = snd
-
-    let of_json json =
-      match J.find json [ "type" ] with
-      | Some typ -> (
-          match J.to_string typ with
-          | Ok "Feature" -> (
-              match
-                (J.find json [ "geometry" ], J.find json [ "properties" ])
-              with
-              | Some geometry, props ->
-                  Result.map
-                    (fun v -> (Option.some v, props))
-                    (Geometry.of_json geometry)
-              | None, props -> Ok (None, props))
-          | Ok s ->
-              Error
-                (`Msg
-                  ("A Geojson feature requires the type `Feature`. Found type, \
-                    but it was "
-                  ^ s))
-          | Error _ as e -> e)
-      | None ->
-          Error
-            (`Msg
-              "A Geojson feature requires the type `Feature`. No type was \
-               found.")
-
-    let to_json (t, props) =
-      J.obj
-        [
-          ("type", J.string "Feature");
-          ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-          ("properties", Option.(value ~default:J.null props));
-        ]
+   {
+      "type" : "Feature"'
+      "id" : "f1",
+      "geometry" : {
+                      'coordinates': [(((36.0, 11.0),
+                      (36.0, 12.0),
+                      (37.0, 12.0),
+                      (37.0, 11.0), 
+                      (36.0, 11.0)),)]},
+                      'bbox': (36.0, 11.0, 37.0, 12.0)},
+                   },
+      "properties" : {
+                     'name' : 'polygon'
+                     }
+   }
 
     module Collection = struct
       type feature = t
