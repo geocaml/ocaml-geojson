@@ -108,9 +108,6 @@ module type Geometry = sig
     val v : Position.t -> t
     (** Create a point from a position. *)
 
-    val bbox : t -> float array option
-    (** Get the bounding box for a point. *)
-
     include Json_conv with type t := t and type json := json
   end
 
@@ -123,9 +120,6 @@ module type Geometry = sig
 
     val v : Position.t array -> t
     (** Create a multipoint object from an array of positions. *)
-
-    val bbox : t -> float array option
-    (** Get the bounding box for a multipoint. *)
 
     include Json_conv with type t := t and type json := json
   end
@@ -141,8 +135,6 @@ module type Geometry = sig
     (** Create a line string from positions, will raise [Invalid_argument] if
         the array doesn't have at least two positions. *)
 
-    val bbox : t -> float array option
-    (** Get the bounding box for a linestring. *)
 
     include Json_conv with type t := t and type json := json
   end
@@ -156,9 +148,6 @@ module type Geometry = sig
 
     val v : LineString.t array -> t
     (** Create a multiline string *)
-
-    val bbox : t -> float array option
-    (** Get the bounding box for a multilinestring. *)
 
     include Json_conv with type t := t and type json := json
   end
@@ -174,9 +163,6 @@ module type Geometry = sig
     (** Create a polygon object from an array of close line strings (note no
         checking is down here to ensure the loops are indeed closed.) *)
 
-    val bbox : t -> float array option
-    (** Get the bounding box for a polygon. *)
-
     include Json_conv with type t := t and type json := json
   end
 
@@ -189,9 +175,6 @@ module type Geometry = sig
 
     val v : Polygon.t array -> t
     (** Create a multi-polygon object from an array of {!Polygon.t}s *)
-
-    val bbox : t -> float array option
-    (** Get the bounding box for a multipolygon. *)
 
     include Json_conv with type t := t and type json := json
   end
