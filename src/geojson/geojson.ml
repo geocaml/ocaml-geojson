@@ -94,7 +94,9 @@ module Make (J : Geojson_intf.Json) = struct
       
 
     module Point = struct
-      type t = Position.t * float array option
+      type t = {
+        coordinates: Position.t; bbox: float array option
+      }
 
       let typ = "Point"
       let position = Fun.id
@@ -112,7 +114,9 @@ module Make (J : Geojson_intf.Json) = struct
     end
 
     module MultiPoint = struct
-      type t = Position.t array * float array option
+      type t = {
+        coordinates: Point.t array; bbox: float array option
+      }
 
       let typ = "MultiPoint"
       let coordinates = Fun.id
@@ -124,12 +128,12 @@ module Make (J : Geojson_intf.Json) = struct
 
       let of_json json = parse_by_type json parse_coords typ
 
-      let to_json (positions, bbx) =
+      let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some bbx then J.array J.float (get bbx) else J.null));
-            ("coordinates", J.array Position.to_json positions);
+            ("bbox", Option.(if is_some tp.bbox then J.array J.float (get tp.bbox) else J.null));
+            ("coordinates", J.array Point.to_json  tp.coordinates);
           ]
     end
 
@@ -431,7 +435,7 @@ module Make (J : Geojson_intf.Json) = struct
       | Collection of geometry list
 
     type feature = { bbox: float array option; properties : json option; geometry : geometry }
-    type r = FC of feature list  * float array option| F of feature | G of geometry * float array option
+    type r = FC of feature list  * float array option| F of feature | G of geometry 
 
     let random ~f t =
       let rec aux_random = function
@@ -442,7 +446,7 @@ module Make (J : Geojson_intf.Json) = struct
         | G g -> Geometry (random_g g)
       and random_f { bbox; properties; geometry } =
         let geo = random_g geometry in
-        (Some geo, properties)
+        { bbox = bbox ; geometry = Some geo; properties = properties}
       and random_g = function
         | Point -> Geometry.Point (random_point ())
         | MultiPoint i ->
@@ -460,7 +464,7 @@ module Make (J : Geojson_intf.Json) = struct
             let lst = List.map random_g lst in
             Geometry.Collection lst
       and random_point () =
-        Geometry.(Point.v (Position.v ~lat:(f ()) ~long:(f ()) ())) 
+        Geometry.(Positon.v (Position.v ~lat:(f ()) ~long:(f ()) ())) 
       and random_polygon i =
         (* This geometry is not going to be very country like... *)
         let points = Array.init i (fun _ -> random_point ()) in
