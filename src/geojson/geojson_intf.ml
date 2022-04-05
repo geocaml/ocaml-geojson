@@ -102,10 +102,10 @@ module type Geometry = sig
     type t
     (** A point is a single {!Position.t} *)
 
-    val position : t -> Position.t
+    val position : t -> t
     (** Convert a point to a position *)
 
-    val v : Position.t -> t
+    val v : Position.t -> Position.t
     (** Create a point from a position. *)
 
     include Json_conv with type t := t and type json := json
@@ -143,10 +143,10 @@ module type Geometry = sig
     type t
     (** A collection of line strings *)
 
-    val lines : t -> LineString.t array
+    val lines : t -> Position.t array array
     (** Access the lines *)
 
-    val v : LineString.t array -> t
+    val v : Position.t array array -> t
     (** Create a multiline string *)
 
     include Json_conv with type t := t and type json := json
@@ -156,10 +156,10 @@ module type Geometry = sig
     type t
     (** A close loop with optional rings *)
 
-    val interior_ring : t -> LineString.t
-    val exterior_rings : t -> LineString.t array
+    val interior_ring : t -> Position.t array
+    val exterior_rings : t -> Position.t array array
 
-    val v : LineString.t array -> t
+    val v : Position.t array array -> t
     (** Create a polygon object from an array of close line strings (note no
         checking is down here to ensure the loops are indeed closed.) *)
 
@@ -170,10 +170,10 @@ module type Geometry = sig
     type t
     (** A multi-polygon object *)
 
-    val polygons : t -> Polygon.t array
+    val polygons : t -> Position.t array array array
     (** Access the polygons *)
 
-    val v : Polygon.t array -> t
+    val v : Position.t array array array -> t
     (** Create a multi-polygon object from an array of {!Polygon.t}s *)
 
     include Json_conv with type t := t and type json := json
@@ -234,7 +234,7 @@ module type S = sig
       | MultiPolygon of int * int
       | Collection of geometry list
 
-    type feature = { properties : json option; geometry : geometry }
+    type feature = { bbox: float array option; properties : json option; geometry : geometry }
     type r = FC of feature list | F of feature | G of geometry
 
     (** {3 Generate random geojson}

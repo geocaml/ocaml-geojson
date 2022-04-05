@@ -23,13 +23,16 @@ let decode_or_err f v =
 module Make (J : Geojson_intf.Json) = struct
   type json = J.t
 
-  let bbox json = 
-    match J.to_array (decode_or_err J.to_float) json with
-    | Ok v -> Some v
-    | Error _ -> None
+  
 
   module Geometry = struct
     type json = J.t
+
+    let bbox json = 
+      match J.to_array (decode_or_err J.to_float) json with
+      | Ok v -> Some v
+      | Error _ -> None
+    let bbox_to_json_or_null bbox = Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
 
     module Position = struct
       (* We use a float array internally for performance *)
@@ -73,76 +76,76 @@ module Make (J : Geojson_intf.Json) = struct
               ^ "have a key-value for `type' whilst parsing "
               ^ typ))
       | _, None,_ -> Error (`Msg "JSON should have a key-value for `coordinates'")
-      | Some typ, Some coords, Some bx -> (
+      | Some typ, Some coords, bx-> (
           let* typ = J.to_string typ in
           match typ with
           | t when t = typ -> (
             match p_c coords with 
-            | Ok v -> Ok (v, bbox bx)
-            | Error e-> Error e
-          )
-          | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
-      | Some typ, Some coords, None -> (
-          let* typ = J.to_string typ in
-          match typ with
-          | t when t = typ -> (
-            match p_c coords with 
-            | Ok v -> Ok (v, None)
+            | Ok v -> Ok (v, Option.bind bx bbox)
             | Error e-> Error e
           )
           | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
       
+      
 
     module Point = struct
       type t = {
-        coordinates: Position.t; bbox: float array option
+        coordinates: Position.t; 
+        bbox: float array option
       }
 
       let typ = "Point"
       let position = Fun.id
       let v position = position
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
-      let of_json json = parse_by_type json parse_coords typ
-
-      let to_json p =
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
+      let to_json tp =
         J.obj
           [ 
-            ("type", J.string @@ typ); 
-            ("bbox", Option.(if is_some @@ snd p then J.array J.float (get @@ snd p) else J.null));
-            ("coordinates", Position.to_json @@ fst p)
+            ("type", J.string typ); 
+            ("bbox", bbox_to_json_or_null tp.bbox);
+            ("coordinates", Position.to_json tp.coordinates)
          ]
     end
 
     module MultiPoint = struct
       type t = {
-        coordinates: Point.t array; bbox: float array option
+        coordinates: Position.t array;
+        bbox: float array option
       }
 
       let typ = "MultiPoint"
-      let coordinates = Fun.id
-      let v positions = positions
+      let coordinates t = t.coordinates
+      let v positions = { coordinates =  positions; bbox = None}
 
       let parse_coords coords =
         try J.to_array (decode_or_err Point.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
 
       let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some tp.bbox then J.array J.float (get tp.bbox) else J.null));
-            ("coordinates", J.array Point.to_json  tp.coordinates);
+            ("bbox", bbox_to_json_or_null tp.bbox);
+            ("coordinates", J.array Position.to_json  tp.coordinates);
           ]
     end
 
     module LineString = struct
-      type t = Position.t array * float array option
+      type t = {
+        coordinates: Position.t array;
+        bbox: float array option
+      }
 
       let typ = "LineString"
-      let coordinates = Fun.id
-      let v = Fun.id
+      let coordinates t = t.coordinates
+      let v p = { coordinates= p; bbox=None}
 
       let parse_coords coords =
         let* arr =
@@ -152,49 +155,59 @@ module Make (J : Geojson_intf.Json) = struct
           Error (`Msg "LineStrings should have two or more points")
         else Ok arr
 
-      let of_json json = parse_by_type json parse_coords typ
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
 
-      let to_json (positions, bbx) =
+      let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some bbx then J.array J.float (get bbx) else J.null));
-            ("coordinates", J.array Position.to_json positions);
+            ("bbox", bbox_to_json_or_null tp.bbox);
+            ("coordinates", J.array Position.to_json tp.coordinates);
           ]
     end
 
     module MultiLineString = struct
-      type t = Position.t array array * float array option
+      type t = {
+        coordinates: Position.t array array;
+        bbox: float array option
+      }
 
       let typ = "MultiLineString"
-      let lines = Fun.id
-      let v = Fun.id
+      let lines t = t.coordinates
+      let v p = { coordinates=p ; bbox=None}
 
       let parse_coords coords =
         try J.to_array (decode_or_err LineString.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
 
-      let to_json (positions,bbx) =
+      let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some bbx then J.array J.float (get bbx) else J.null));
-            ("coordinates", J.array (J.array (J.array J.float)) positions);
+            ("bbox", bbox_to_json_or_null tp.bbox);
+            ("coordinates", J.array (J.array (J.array J.float)) tp.coordinates);
           ]
     end
 
     module Polygon = struct
-      type t = MultiLineString.t 
+      type t = {
+        coordinates: Position.t array array;
+        bbox: float array option
+      }
 
       let typ = "Polygon"
-      let interior_ring t = t.(0)
+      let interior_ring t = t.coordinates.(0)
 
       (* If used a lot, should changed to cstruct style off and len
          to avoid the allocations here. *)
-      let exterior_rings t = Array.sub t 1 (Array.length t - 1)
-      let v = Fun.id
+      let exterior_rings t = Array.sub t.coordinates 1 (Array.length t.coordinates - 1)
+      let v p = {coordinates = p; bbox=None}
 
       let parse_coords coords =
         try
@@ -205,37 +218,43 @@ module Make (J : Geojson_intf.Json) = struct
             coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
 
-      let to_json (positions, bbx) =
+      let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some bbx then J.array J.float (get bbx) else J.null));
-            ("coordinates", J.array (J.array (J.array J.float)) positions);
+            ("bbox", bbox_to_json_or_null tp.bbox);
+            ("coordinates", J.array (J.array (J.array J.float)) tp.coordinates);
           ]
     end
 
     module MultiPolygon = struct
-      type t = Position.t array array array * float array option
-
+      type t = {
+        coordinates: Position.t array array array; 
+        bbox: float array option
+      }
       let typ = "MultiPolygon"
-      let polygons = Fun.id
-      let v = Fun.id
+      let polygons t = t.coordinates
+      let v p = {coordinates = p; bbox= None}
 
       let parse_coords coords =
         try J.to_array (decode_or_err Polygon.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let of_json json = match parse_by_type json parse_coords typ with
+      | Ok v -> Ok {coordinates = fst v; bbox = snd v}
+      | Error e -> Error e
 
-      let to_json (positions, bbx) =
+      let to_json tp =
         J.obj
           [
             ("type", J.string typ);
-            ("bbox", Option.(if is_some bbx then J.array J.float (get bbx) else J.null));
+            ("bbox", bbox_to_json_or_null tp.bbox);
             ( "coordinates",
-              J.array (J.array (J.array (J.array J.float))) positions );
+              J.array (J.array (J.array (J.array J.float))) tp.coordinates );
           ]
     end
 
@@ -297,11 +316,22 @@ module Make (J : Geojson_intf.Json) = struct
   end
 
   module Feature = struct
+
     type t = {
       bbox : float array option;
       geometry : Geometry.t option;
       properties : json option;
     } 
+
+    let bbox json = 
+      match J.to_array (decode_or_err J.to_float) json with
+      | Ok v -> Some v
+      | Error _ -> None
+    let bbox_to_json_or_null bbox = Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
+
+    let geometry t = t.geometry
+
+    let properties t = t.properties
 
     let of_json json =
       match J.find json [ "type" ] with
@@ -311,10 +341,10 @@ module Make (J : Geojson_intf.Json) = struct
               match
                 (J.find json [ "bbox" ], J.find json [ "geometry" ], J.find json [ "properties" ])
               with
-              | Some box, Some geometry, props ->
+              | Some box, Some geometry, props ->(
                   Result.map
                     (fun v -> {bbox=bbox box;geometry=Option.some v; properties=props})
-                    (Geometry.of_json geometry)
+                    (Geometry.of_json geometry))
               | None, Some geometry, props ->
                   Result.map
                     (fun v -> {bbox=None;geometry=Option.some v; properties=props})
@@ -338,16 +368,18 @@ module Make (J : Geojson_intf.Json) = struct
       J.obj
         [
           ("type", J.string "Feature");
-          ("bbox", Option.(if is_some t.bbox then J.array J.float (get t.bbox) else J.null));
+          ("bbox", bbox_to_json_or_null t.bbox);
           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t.geometry));
           ("properties", Option.(value ~default:J.null t.properties));
         ]
 
     module Collection = struct
       type feature = t
-      type nonrec t = feature list * float array option
-
-      let features = Fun.id
+      type nonrec t = {
+        features: feature list;
+        bbox: float array option
+      }
+      let features t = t.features
 
       let of_json json =
         match J.find json [ "type" ] with
@@ -355,18 +387,12 @@ module Make (J : Geojson_intf.Json) = struct
             match J.to_string typ with
             | Ok "FeatureCollection" -> (
                 match (J.find json [ "features" ], J.find json [ "bbox" ]) with
-                | Some features, None ->(
+                | Some features, bbx ->(
+                  let bbox = Option.map (decode_or_err @@ J.to_array (decode_or_err J.to_float)) bbx in
                     match (J.to_list
                       (fun geometry -> decode_or_err of_json geometry)
                       features) with 
-                      | Ok v -> Ok (v, None)
-                      | Error e -> Error e
-                )
-                | Some features, Some bbx ->(
-                    match (J.to_list
-                      (fun geometry -> decode_or_err of_json geometry)
-                      features) with 
-                      | Ok v -> Ok (v, bbox bbx)
+                      | Ok v -> Ok {features= v; bbox= bbox}
                       | Error e -> Error e
                 )
                 | None, _ ->
@@ -391,8 +417,8 @@ module Make (J : Geojson_intf.Json) = struct
         J.obj
           [
             ("type", J.string "FeatureCollection");
-            ("bbox", Option.(if is_some @@ snd t then J.array J.float (get @@ snd t) else J.null));
-            ("features", J.list to_json @@ fst t);
+            ("bbox", bbox_to_json_or_null t.bbox);
+            ("features", J.list to_json t.features);
           ]
     end
   end
@@ -434,37 +460,37 @@ module Make (J : Geojson_intf.Json) = struct
       | MultiPolygon of int * int
       | Collection of geometry list
 
-    type feature = { bbox: float array option; properties : json option; geometry : geometry }
-    type r = FC of feature list  * float array option| F of feature | G of geometry 
+    type feature = {bbox: float array option; properties : json option; geometry : geometry }
+    type r = FC of feature list | F of feature | G of geometry 
 
     let random ~f t =
       let rec aux_random = function
-        | FC (fs,bx) ->
+        | FC fs ->
             let features = List.map random_f fs in
-            FeatureCollection (features,bx)
+            FeatureCollection {features= features; bbox=None}
         | F f -> Feature (random_f f)
         | G g -> Geometry (random_g g)
-      and random_f { bbox; properties; geometry } =
-        let geo = random_g geometry in
-        { bbox = bbox ; geometry = Some geo; properties = properties}
+      and random_f p =
+        let geo = random_g p.geometry in
+        { bbox = p.bbox ; geometry = Some geo; properties=p.properties }
       and random_g = function
-        | Point -> Geometry.Point (random_point ())
+        | Point -> Geometry.Point {coordinates= (random_point ()); bbox = None}
         | MultiPoint i ->
-            Geometry.MultiPoint (Array.init i (fun _ -> random_point ()))
+            Geometry.MultiPoint {coordinates = (Array.init i (fun _ -> random_point ())); bbox = None}
         | LineString i ->
-            Geometry.LineString (Array.init i (fun _ -> random_point ()))
+            Geometry.LineString {coordinates=(Array.init i (fun _ -> random_point ())); bbox=None}
         | MultiLineString (i, j) ->
             Geometry.MultiLineString
-              (Array.init i @@ fun _ -> Array.init j (fun _ -> random_point ()))
-        | Polygon i -> Geometry.Polygon (random_polygon i)
+              {coordinates = (Array.init i @@ fun _ -> Array.init j (fun _ -> random_point ())); bbox=None}
+        | Polygon i -> Geometry.Polygon {coordinates = (random_polygon i); bbox=None}
         | MultiPolygon (i, j) ->
             let arr = Array.init i (fun _ -> random_polygon j) in
-            Geometry.MultiPolygon arr
+            Geometry.MultiPolygon {coordinates = arr; bbox=None}
         | Collection lst ->
             let lst = List.map random_g lst in
             Geometry.Collection lst
       and random_point () =
-        Geometry.(Positon.v (Position.v ~lat:(f ()) ~long:(f ()) ())) 
+        Geometry.(Point.v (Position.v ~lat:(f ()) ~long:(f ()) ())) 
       and random_polygon i =
         (* This geometry is not going to be very country like... *)
         let points = Array.init i (fun _ -> random_point ()) in
