@@ -23,9 +23,9 @@ And to run the tests (which are in the `test` directory) run:
 dune runtest
 ```
 
-And now you have successfully cloned and build the repository to you local!! :tada:
+And now you have successfully cloned and build the repository to your local!! :tada:
 
-If you are making any changes to the codes, for instance, you have made some kind of modifications to the files that has `.ml` extension, then please also run the formatter on the code to enhance the readability of your code and to keep your code free from programatic/ syntax and stylistic errors as well. You can achieve this by running the following command:
+If you are making any changes to the codes, *for instance*, you have made some kind of modifications to the files that has `.ml` extension, then please also run the formatter on the code to enhance the readability of your code and to keep your code free from programatic/ syntax and stylistic errors as well. You can achieve this by running the following command:
 
 ```
 dune build @fmt --auto
@@ -37,7 +37,7 @@ To run this command without any error, you might need to install the correct ver
 opam install ocamlformat=X.XX.X
 ```
 
-where, `X.XX.X` denotes the version being stated in the respective file. For instance, if `0.20.1` version of `ocamlformat` has to be installed, then you must run `opam install ocamlformat=0.20.1`. For more information kindly visit [OCamlFormat](https://github.com/ocaml-ppx/ocamlformat).
+where, `X.XX.X` denotes the version being stated in the respective file. *For example*, if `0.20.1` version of `ocamlformat` has to be installed, then you must run `opam install ocamlformat=0.20.1`. To know more, kindly visit [OCamlFormat](https://github.com/ocaml-ppx/ocamlformat).
 
 If you hit any problems please feel free to open an issue. 
 
