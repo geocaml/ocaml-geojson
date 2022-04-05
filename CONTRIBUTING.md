@@ -37,7 +37,7 @@ To run this command without any error, you might need to install the correct ver
 opam install ocamlformat=X.XX.X
 ```
 
-where, `X.XX.X` denotes the version being stated in the respective file. *For example*, if `0.20.1` version of `ocamlformat` has to be installed, then you must run `opam install ocamlformat=0.20.1`. To know more, kindly visit [OCamlFormat](https://github.com/ocaml-ppx/ocamlformat).
+where, `X.XX.X` denotes the version in the `.ocamlformat` file. *For example*, if the `0.20.1` version of `ocamlformat` has to be installed, then you must run `opam install ocamlformat=0.20.1`. To know more, kindly visit [OCamlFormat](https://github.com/ocaml-ppx/ocamlformat).
 
 If you hit any problems please feel free to open an issue. 
 
