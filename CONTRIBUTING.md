@@ -23,7 +23,22 @@ And to run the tests (which are in the `test` directory) run:
 dune runtest
 ```
 
-If you hit any problems please feel free to open an issue. Please also run the formatter on the code too with `dune build @fmt --auto`, you might need to install the correct version of `ocamlformat`.
+
+After making changes to the code please also run the formatter to maintain a common style across the codebase. You can achieve this by running the following command:
+
+```
+dune build @fmt --auto
+```
+
+To run this command without any error, you might need to install the correct version of `ocamlformat`. The `.ocamlformat` file records the current version the repository uses. Install this version by running:
+
+```
+opam install ocamlformat=X.XX.X
+```
+
+where, `X.XX.X` denotes the version in the `.ocamlformat` file. *For example*, if the `0.20.1` version of `ocamlformat` has to be installed, then you must run `opam install ocamlformat=0.20.1`. To know more, kindly visit [OCamlFormat](https://github.com/ocaml-ppx/ocamlformat).
+
+If you hit any problems please feel free to open an issue. 
 
 ## Git and GitHub workflow
 
