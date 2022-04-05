@@ -25,7 +25,7 @@ dune runtest
 
 And now you have successfully cloned and build the repository to your local!! :tada:
 
-If you are making any changes to the codes, *for instance*, you have made some kind of modifications to the files that has `.ml` extension, then please also run the formatter on the code to enhance the readability of your code and to keep your code free from programatic/ syntax and stylistic errors as well. You can achieve this by running the following command:
+After making changes to the code please also run the formatter to maintain a common style across the codebase. You can achieve this by running the following command:
 
 ```
 dune build @fmt --auto
