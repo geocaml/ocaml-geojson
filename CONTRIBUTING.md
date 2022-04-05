@@ -31,7 +31,7 @@ If you are making any changes to the codes, *for instance*, you have made some k
 dune build @fmt --auto
 ```
 
-To run this command without any error, you might need to install the correct version of `ocamlformat`. For verifying which version of it has to be installed, please check out the version mentioned in the `.ocamlformat` file and install it by running:
+To run this command without any error, you might need to install the correct version of `ocamlformat`. The `.ocamlformat` file records the current version the repository uses. Install this version by running:
 
 ```
 opam install ocamlformat=X.XX.X
