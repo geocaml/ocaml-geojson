@@ -111,10 +111,10 @@ let test_random () =
   let r =
     FC
       [
-        { properties = None; geometry = Point };
-        { properties = None; geometry = LineString 2 };
-        { properties = None; geometry = Polygon 2 };
-        {
+        { bbox=None; properties = None; geometry = Point };
+        { bbox=None; properties = None; geometry = LineString 2 };
+        { bbox=None; properties = None; geometry = Polygon 2 };
+        { bbox=None;
           properties = Some (`O [ ("name", `String "abcd") ]);
           geometry = MultiPolygon (3, 3);
         };
