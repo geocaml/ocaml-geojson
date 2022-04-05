@@ -23,7 +23,6 @@ And to run the tests (which are in the `test` directory) run:
 dune runtest
 ```
 
-And now you have successfully cloned and build the repository to your local!! :tada:
 
 After making changes to the code please also run the formatter to maintain a common style across the codebase. You can achieve this by running the following command:
 
