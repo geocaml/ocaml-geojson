@@ -50,8 +50,9 @@ let _get_all_props s =
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
   match geo with
-  | Ok (Feature f) -> Option.to_list @@ Geojson.Feature.properties f
-  | Ok (FeatureCollection fc) ->
+  | Ok { geojson = Feature f; _ } ->
+      Option.to_list @@ Geojson.Feature.properties f
+  | Ok { geojson = FeatureCollection fc; _ } ->
       let fs = Geojson.Feature.Collection.features fc in
       List.filter_map Geojson.Feature.properties fs
   | _ -> []
@@ -61,7 +62,9 @@ let test_multi_line () =
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
   let coords =
-    match geo with Ok (Geometry (MultiLineString m)) -> m | _ -> assert false
+    match geo with
+    | Ok { geojson = Geometry (MultiLineString m); _ } -> m
+    | _ -> assert false
   in
   let json' = Geojson.Geometry.MultiLineString.to_json coords in
   let t =
@@ -86,7 +89,9 @@ let test_multi_point () =
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
   let coords =
-    match geo with Ok (Geometry (MultiPoint p)) -> p | _ -> assert false
+    match geo with
+    | Ok { geojson = Geometry (MultiPoint p); _ } -> p
+    | _ -> assert false
   in
   let json' = Geojson.Geometry.MultiPoint.to_json coords in
   let t =
@@ -111,10 +116,10 @@ let test_random () =
   let r =
     FC
       [
-        { bbox=None; properties = None; geometry = Point };
-        { bbox=None; properties = None; geometry = LineString 2 };
-        { bbox=None; properties = None; geometry = Polygon 2 };
-        { bbox=None;
+        { properties = None; geometry = Point };
+        { properties = None; geometry = LineString 2 };
+        { properties = None; geometry = Polygon 2 };
+        {
           properties = Some (`O [ ("name", `String "abcd") ]);
           geometry = MultiPolygon (3, 3);
         };
