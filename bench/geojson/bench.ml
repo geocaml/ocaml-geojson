@@ -40,7 +40,7 @@ let find_code expected_code nom file =
   let code =
     match Geo.of_json s with
     | Error (`Msg m) -> failwith m
-    | Ok (FeatureCollection fcs) -> (
+    | Ok { geojson = FeatureCollection fcs; _ } -> (
         let features = Geo.Feature.Collection.features fcs in
         match List.find_opt (fun f -> find f) features with
         | Some f ->
