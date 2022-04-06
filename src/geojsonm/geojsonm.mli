@@ -79,3 +79,6 @@ val fold_geometry :
 val fold_props :
   ('a -> Ezjsonm.value -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
 (** [fold_props f init src] *)
+
+val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
+val map_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
