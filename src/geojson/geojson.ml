@@ -61,7 +61,7 @@ module Make (J : Geojson_intf.Json) = struct
       let to_json arr = J.array J.float arr
     end
 
-    (* Returns the float array of coordinates if all goes well for any GeoJson type *)
+    (* Returns the float array of coordinates if all goes well for any Geometry type *)
     let parse_by_type json p_c typ =
       match (J.find json [ "type" ], J.find json [ "coordinates" ]) with
       | None, _ ->
@@ -84,7 +84,7 @@ module Make (J : Geojson_intf.Json) = struct
       let position = Fun.id
       let v position = position
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox position =
         match bbox with
@@ -114,7 +114,7 @@ module Make (J : Geojson_intf.Json) = struct
         try J.to_array (decode_or_err Point.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
         match bbox with
@@ -148,7 +148,7 @@ module Make (J : Geojson_intf.Json) = struct
           Error (`Msg "LineStrings should have two or more points")
         else Ok arr
 
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
         match bbox with
@@ -178,7 +178,7 @@ module Make (J : Geojson_intf.Json) = struct
         try J.to_array (decode_or_err LineString.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
         match bbox with
@@ -217,7 +217,7 @@ module Make (J : Geojson_intf.Json) = struct
             coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
         match bbox with
@@ -247,7 +247,7 @@ module Make (J : Geojson_intf.Json) = struct
         try J.to_array (decode_or_err Polygon.parse_coords) coords
         with Failure m -> Error (`Msg m)
 
-      let of_json json = parse_by_type json parse_coords typ
+      let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
         match bbox with
@@ -277,26 +277,28 @@ module Make (J : Geojson_intf.Json) = struct
       | MultiPolygon of MultiPolygon.t
       | Collection of t list
 
-    let rec of_json json =
+    let rec base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
-          | Ok "Point" -> Result.map (fun v -> Point v) @@ Point.of_json json
+          | Ok "Point" ->
+              Result.map (fun v -> Point v) @@ Point.base_of_json json
           | Ok "MultiPoint" ->
-              Result.map (fun v -> MultiPoint v) @@ MultiPoint.of_json json
+              Result.map (fun v -> MultiPoint v) @@ MultiPoint.base_of_json json
           | Ok "LineString" ->
-              Result.map (fun v -> LineString v) @@ LineString.of_json json
+              Result.map (fun v -> LineString v) @@ LineString.base_of_json json
           | Ok "MultiLineString" ->
               Result.map (fun v -> MultiLineString v)
-              @@ MultiLineString.of_json json
+              @@ MultiLineString.base_of_json json
           | Ok "Polygon" ->
-              Result.map (fun v -> Polygon v) @@ Polygon.of_json json
+              Result.map (fun v -> Polygon v) @@ Polygon.base_of_json json
           | Ok "MultiPolygon" ->
-              Result.map (fun v -> MultiPolygon v) @@ MultiPolygon.of_json json
+              Result.map (fun v -> MultiPolygon v)
+              @@ MultiPolygon.base_of_json json
           | Ok "GeometryCollection" -> (
               match J.find json [ "geometries" ] with
               | Some list ->
-                  let geo = J.to_list (decode_or_err of_json) list in
+                  let geo = J.to_list (decode_or_err base_of_json) list in
                   Result.map (fun v -> Collection v) geo
               | None ->
                   Error
@@ -352,7 +354,7 @@ module Make (J : Geojson_intf.Json) = struct
     let bbox_to_json_or_null bbox =
       Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
 
-    let of_json json =
+    let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
@@ -363,7 +365,7 @@ module Make (J : Geojson_intf.Json) = struct
               | Some geometry, props ->
                   Result.map
                     (fun v -> (Option.some v, props))
-                    (Geometry.of_json geometry)
+                    (Geometry.base_of_json geometry)
               | None, props -> Ok (None, props))
           | Ok s ->
               Error
@@ -404,7 +406,7 @@ module Make (J : Geojson_intf.Json) = struct
 
       let features = Fun.id
 
-      let of_json json =
+      let base_of_json json =
         match J.find json [ "type" ] with
         | Some typ -> (
             match J.to_string typ with
@@ -412,7 +414,7 @@ module Make (J : Geojson_intf.Json) = struct
                 match J.find json [ "features" ] with
                 | Some features ->
                     J.to_list
-                      (fun geometry -> decode_or_err of_json geometry)
+                      (fun geometry -> decode_or_err base_of_json geometry)
                       features
                 | None ->
                     Error
@@ -469,18 +471,22 @@ module Make (J : Geojson_intf.Json) = struct
     | Some typ, bbx -> (
         match J.to_string typ with
         | Ok "Feature" -> (
-            match Result.map (fun v -> Feature v) @@ Feature.of_json json with
+            match
+              Result.map (fun v -> Feature v) @@ Feature.base_of_json json
+            with
             | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
             match
               Result.map (fun v -> FeatureCollection v)
-              @@ Feature.Collection.of_json json
+              @@ Feature.Collection.base_of_json json
             with
             | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
-            match Result.map (fun v -> Geometry v) @@ Geometry.of_json json with
+            match
+              Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
+            with
             | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
             | Error e -> Error e)
         | Error _ as e -> e)
