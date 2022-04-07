@@ -290,7 +290,7 @@ module Make (J : Intf.Json) = struct
           match J.to_string typ with
           | Ok "Feature" -> (
               match
-                (J.find json [ "geometry" ], J.find json [ "properties" ])
+                (J.find json["id"], J.find json [ "geometry" ], J.find json [ "properties" ])
               with
               | Some geometry, props ->
                   Result.map
@@ -310,14 +310,14 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json ?bbox (t, props) =
+    let to_json (id, t, props) =
       J.obj
-        ([
-           ("type", J.string "Feature");
-           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-           ("properties", Option.(value ~default:J.null props));
-         ]
-        @ bbox_to_json_or_empty bbox)
+        [
+          ("type", J.string "Feature");
+          ("id", option.(value ~default:J.null id));
+          ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+          ("properties", Option.(value ~default:J.null props));
+        ]
 
     module Collection = struct
       type feature = t
