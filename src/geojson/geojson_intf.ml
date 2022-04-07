@@ -15,9 +15,9 @@
 
 (** {2 Json}
 
-    The GeoJson library does not force you to use a particular JSON parsing
-    library. You must provide one. See the tests and benchmarks for an [Ezjsonm]
-    parser and one for JS using [Brr]'s [Jv] library. *)
+The GeoJson library does not force you to use a particular JSON parsing
+library. You must provide one. See the tests and benchmarks for an [Ezjsonm]
+parser and one for JS using [Brr]'s [Jv] library. *)
 module type Json = sig
   type t
   (** The type your parser uses to represent a parsed JSON object. *)
@@ -65,7 +65,7 @@ module type Json_conv = sig
   type t
   type json
 
-  val of_json : json -> (t, [ `Msg of string ]) result
+  val base_of_json : json -> (t, [ `Msg of string ]) result
   val to_json : ?bbox:float array option -> t -> json
 end
 
@@ -247,9 +247,9 @@ module type S = sig
         tweaking some of the parameters. For example:
 
         [{
-              let random_structure = 
-                FC (List.init 100 (fun _ -> { properties = None; geometry = Point }))
-            }]*)
+          let random_structure = 
+            FC (List.init 100 (fun _ -> { properties = None; geometry = Point }))
+        }]*)
 
     val random : f:(unit -> float) -> r -> t
     (** [random ~f r] produces random GeoJson based on the structure provided by
