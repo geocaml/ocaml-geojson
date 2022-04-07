@@ -15,9 +15,9 @@
 
 (** {2 Json}
 
-The GeoJson library does not force you to use a particular JSON parsing
-library. You must provide one. See the tests and benchmarks for an [Ezjsonm]
-parser and one for JS using [Brr]'s [Jv] library. *)
+    The GeoJson library does not force you to use a particular JSON parsing
+    library. You must provide one. See the tests and benchmarks for an [Ezjsonm]
+    parser and one for JS using [Brr]'s [Jv] library. *)
 module type Json = sig
   type t
   (** The type your parser uses to represent a parsed JSON object. *)
