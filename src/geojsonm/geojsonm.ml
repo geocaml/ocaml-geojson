@@ -172,7 +172,7 @@ let map_geometry f src dst =
     match Jsonm.decode decoder with
     (* TODO(patricoferris): A geometry collection could explode on us here... *)
     | `Lexeme (`Name "geometry" as t) -> (
-        match G.Geometry.of_json @@ decode_single_object decoder with
+        match G.Geometry.base_of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
         | Ok g ->
             let g' = f g in
@@ -219,7 +219,7 @@ let fold_geometry f init src =
   let rec go acc =
     match Jsonm.decode decoder with
     | `Lexeme (`Name "geometry") -> (
-        match G.Geometry.of_json @@ decode_single_object decoder with
+        match G.Geometry.base_of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
         | Ok g ->
             let acc = f acc g in
