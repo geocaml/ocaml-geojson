@@ -26,13 +26,13 @@ module Make (J : Geojson_intf.Json) = struct
   module Geometry = struct
     type json = J.t
 
-    let bbox_to_json_or_null bbox =
-      Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
+    let bbox_to_json_or_empty bbox =
+      Option.(
+        if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
 
     let wrapped_bbox_to_json_field wrapped_bbox =
       Option.(
-        if is_some wrapped_bbox then
-          [ ("bbox", bbox_to_json_or_null @@ get wrapped_bbox) ]
+        if is_some wrapped_bbox then bbox_to_json_or_empty @@ get wrapped_bbox
         else [])
 
     module Position = struct
@@ -291,13 +291,13 @@ module Make (J : Geojson_intf.Json) = struct
     let geometry = fst
     let properties = snd
 
-    let bbox_to_json_or_null bbox =
-      Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
+    let bbox_to_json_or_empty bbox =
+      Option.(
+        if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
 
     let wrapped_bbox_to_json_field wrapped_bbox =
       Option.(
-        if is_some wrapped_bbox then
-          [ ("bbox", bbox_to_json_or_null @@ get wrapped_bbox) ]
+        if is_some wrapped_bbox then bbox_to_json_or_empty @@ get wrapped_bbox
         else [])
 
     let base_of_json json =
