@@ -1,8 +1,10 @@
 (* Copyright (c) 2013 Thomas Gazagnaire <thomas@gazagnaire.org>
    Copyright (c) 2021 Patrick Ferris <patrick@sirref.org>
+
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above
    copyright notice and this permission notice appear in all copies.
+
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
@@ -10,12 +12,14 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
    DEALINGS IN THE SOFTWARE.
+
    The defunctionalised value construction is borrowed from Ezjsonm.
 *)
 
 (* A GeoJson document consists of a single JSON document that is either a feature collection
    (an array of features), a single feature (an array of geometry objects) or a single geometry
    objects (which could contain multiple geometry objects thanks to the collection type).
+
    Most commmonly, the large size of a GeoJson document is because it is a feature collection
    containing many features, although it's probably not infeasible that there are huge documents
    containing a single feature with lots of geometry objects. *)
