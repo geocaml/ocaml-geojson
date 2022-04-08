@@ -29,6 +29,12 @@ module Make (J : Geojson_intf.Json) = struct
     let bbox_to_json_or_null bbox =
       Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
 
+    let wrapped_bbox_to_json_field wrapped_bbox =
+      Option.(
+        if is_some wrapped_bbox then
+          [ ("bbox", bbox_to_json_or_null @@ get wrapped_bbox) ]
+        else [])
+
     module Position = struct
       (* We use a float array internally for performance *)
       type t = float array
@@ -87,20 +93,11 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox position =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("coordinates", Position.to_json position);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("coordinates", Position.to_json position);
-              ]
+        J.obj
+          ([
+             ("type", J.string typ); ("coordinates", Position.to_json position);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     module MultiPoint = struct
@@ -117,20 +114,12 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("coordinates", J.array Position.to_json positions);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("coordinates", J.array Position.to_json positions);
-              ]
+        J.obj
+          ([
+             ("type", J.string typ);
+             ("coordinates", J.array Position.to_json positions);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     module LineString = struct
@@ -151,20 +140,12 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("coordinates", J.array Position.to_json positions);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("coordinates", J.array Position.to_json positions);
-              ]
+        J.obj
+          ([
+             ("type", J.string typ);
+             ("coordinates", J.array Position.to_json positions);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     module MultiLineString = struct
@@ -181,20 +162,12 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("coordinates", J.array (J.array (J.array J.float)) positions);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("coordinates", J.array (J.array (J.array J.float)) positions);
-              ]
+        J.obj
+          ([
+             ("type", J.string typ);
+             ("coordinates", J.array (J.array (J.array J.float)) positions);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     module Polygon = struct
@@ -220,20 +193,12 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("coordinates", J.array (J.array (J.array J.float)) positions);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("coordinates", J.array (J.array (J.array J.float)) positions);
-              ]
+        J.obj
+          ([
+             ("type", J.string typ);
+             ("coordinates", J.array (J.array (J.array J.float)) positions);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     module MultiPolygon = struct
@@ -250,22 +215,13 @@ module Make (J : Geojson_intf.Json) = struct
       let base_of_json json = parse_by_type json parse_coords typ
 
       let to_json ?bbox positions =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ("bbox", bbox_to_json_or_null @@ x);
-                ( "coordinates",
-                  J.array (J.array (J.array (J.array J.float))) positions );
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string typ);
-                ( "coordinates",
-                  J.array (J.array (J.array (J.array J.float))) positions );
-              ]
+        J.obj
+          ([
+             ("type", J.string typ);
+             ( "coordinates",
+               J.array (J.array (J.array (J.array J.float))) positions );
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
 
     type t =
@@ -312,37 +268,21 @@ module Make (J : Geojson_intf.Json) = struct
             (`Msg
               "A Geojson text should contain one object with a member `type`.")
 
-    let rec to_json ?bbox c =
-      match bbox with
-      | Some x -> (
-          match c with
-          | Point point -> Point.to_json ~bbox:x point
-          | MultiPoint mp -> MultiPoint.to_json ~bbox:x mp
-          | LineString ls -> LineString.to_json ~bbox:x ls
-          | MultiLineString mls -> MultiLineString.to_json ~bbox:x mls
-          | Polygon p -> Polygon.to_json ~bbox:x p
-          | MultiPolygon mp -> MultiPolygon.to_json ~bbox:x mp
-          | Collection c ->
-              J.obj
-                [
-                  ("type", J.string "GeometryCollection");
-                  ("bbox", bbox_to_json_or_null @@ x);
-                  ("geometries", J.list to_json c);
-                ])
-      | None -> (
-          match c with
-          | Point point -> Point.to_json point
-          | MultiPoint mp -> MultiPoint.to_json mp
-          | LineString ls -> LineString.to_json ls
-          | MultiLineString mls -> MultiLineString.to_json mls
-          | Polygon p -> Polygon.to_json p
-          | MultiPolygon mp -> MultiPolygon.to_json mp
-          | Collection c ->
-              J.obj
-                [
-                  ("type", J.string "GeometryCollection");
-                  ("geometries", J.list to_json c);
-                ])
+    let rec to_json ?bbox = function
+      | Point point -> Point.to_json ~bbox:(Option.join bbox) point
+      | MultiPoint mp -> MultiPoint.to_json ~bbox:(Option.join bbox) mp
+      | LineString ls -> LineString.to_json ~bbox:(Option.join bbox) ls
+      | MultiLineString mls ->
+          MultiLineString.to_json ~bbox:(Option.join bbox) mls
+      | Polygon p -> Polygon.to_json ~bbox:(Option.join bbox) p
+      | MultiPolygon mp -> MultiPolygon.to_json ~bbox:(Option.join bbox) mp
+      | Collection c ->
+          J.obj
+            ([
+               ("type", J.string "GeometryCollection");
+               ("geometries", J.list to_json c);
+             ]
+            @ wrapped_bbox_to_json_field bbox)
   end
 
   module Feature = struct
@@ -353,6 +293,12 @@ module Make (J : Geojson_intf.Json) = struct
 
     let bbox_to_json_or_null bbox =
       Option.(if is_some bbox then J.array J.float (get bbox) else J.null)
+
+    let wrapped_bbox_to_json_field wrapped_bbox =
+      Option.(
+        if is_some wrapped_bbox then
+          [ ("bbox", bbox_to_json_or_null @@ get wrapped_bbox) ]
+        else [])
 
     let base_of_json json =
       match J.find json [ "type" ] with
@@ -381,24 +327,13 @@ module Make (J : Geojson_intf.Json) = struct
                found.")
 
     let to_json ?bbox (t, props) =
-      match bbox with
-      | Some x ->
-          J.obj
-            [
-              ("type", J.string "Feature");
-              ("bbox", bbox_to_json_or_null @@ x);
-              ( "geometry",
-                Option.(value ~default:J.null @@ map Geometry.to_json t) );
-              ("properties", Option.(value ~default:J.null props));
-            ]
-      | None ->
-          J.obj
-            [
-              ("type", J.string "Feature");
-              ( "geometry",
-                Option.(value ~default:J.null @@ map Geometry.to_json t) );
-              ("properties", Option.(value ~default:J.null props));
-            ]
+      J.obj
+        ([
+           ("type", J.string "Feature");
+           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+           ("properties", Option.(value ~default:J.null props));
+         ]
+        @ wrapped_bbox_to_json_field bbox)
 
     module Collection = struct
       type feature = t
@@ -435,20 +370,12 @@ module Make (J : Geojson_intf.Json) = struct
                  `FeatureCollection`. No type was found.")
 
       let to_json ?bbox t =
-        match bbox with
-        | Some x ->
-            J.obj
-              [
-                ("type", J.string "FeatureCollection");
-                ("bbox", bbox_to_json_or_null @@ x);
-                ("features", J.list to_json t);
-              ]
-        | None ->
-            J.obj
-              [
-                ("type", J.string "FeatureCollection");
-                ("features", J.list to_json t);
-              ]
+        J.obj
+          ([
+             ("type", J.string "FeatureCollection");
+             ("features", J.list to_json t);
+           ]
+          @ wrapped_bbox_to_json_field bbox)
     end
   end
 
