@@ -80,5 +80,25 @@ val fold_props :
   ('a -> Ezjsonm.value -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
 (** [fold_props f init src] *)
 
+(** {2 Iterators}
+
+    Iterators follows the type signature as:
+
+    val iter : ('a -> unit) -> 'a list -> unit
+
+    For eample, List.iter print_int [1; 2; 3; 4] ;;
+
+    will return
+
+    1234- : unit =() as a unit.
+
+    Iterators are similar to map functions except they take a function [f] that
+    takes a single element from the data-structure as an argument and returns
+    [unit]. In that sense, they tend to be functions with side-effects, such as
+    [print_endline], [print_newline ()] *)
+
 val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
-val map_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
+(** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
+
+val iter_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
+(** [iter_props src ~f] will apply [f] to each feature's properties field. *)
