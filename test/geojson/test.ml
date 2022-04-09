@@ -106,6 +106,23 @@ let test_multi_point () =
     t;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_bbox () =
+  let s = read_file "files/valid/geo_with_bbox.json" in
+  let json = Ezjsonm.value_from_string s in
+  let geojson_obj = Geojson.of_json json in
+  let bbox =
+    match geojson_obj with
+    | Ok { geojson = _; bbox = x } -> Option.get x
+    | _ -> assert false
+  in
+  let json' = Geojson.to_json @@ Result.get_ok geojson_obj in
+
+  Alcotest.(check (array (float 0.)))
+    "same bbox"
+    [| 100.0; 0.0; 101.0; 1.0 |]
+    bbox;
+  Alcotest.(check ezjsonm) "same json" json json'
+
 let geojson =
   Alcotest.testable
     (fun ppf p -> Fmt.pf ppf "%s" (Ezjsonm.value_to_string (Geojson.to_json p)))
@@ -138,4 +155,5 @@ let () =
           Alcotest.test_case "multi-point" `Quick test_multi_point;
         ] );
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
+      ("bbox", [ Alcotest.test_case "bbox" `Quick test_bbox ]);
     ]

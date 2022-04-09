@@ -66,7 +66,11 @@ module type Json_conv = sig
   type json
 
   val base_of_json : json -> (t, [ `Msg of string ]) result
+  (** Used on each Geojson type to get its fundamental/basic fields from a given
+      json *)
+
   val to_json : ?bbox:float array option -> t -> json
+  (** Convert a given fundamental type to json with an optional bbox *)
 end
 
 (** {2 GeoJson Geometry Objects}
@@ -225,7 +229,11 @@ module type S = sig
   type t = { geojson : geojson; bbox : float array option }
 
   val of_json : json -> (t, [ `Msg of string ]) result
+  (** Top level function to convert json to a given type in its entirety, i.e,
+      including optional fields *)
+
   val to_json : t -> json
+  (** Converts a given geojson type to json *)
 
   module Random : sig
     type geometry =
