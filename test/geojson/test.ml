@@ -113,7 +113,7 @@ let test_bbox () =
   let geojson_obj = Geojson.of_json json in
   let bbox =
     match geojson_obj with
-    | Ok { geojson = _; bbox = x } -> Option.get x
+    | Ok { geojson = _; bbox = Some x } -> x
     | _ -> assert false
   in
   let json' = Geojson.to_json @@ Result.get_ok geojson_obj in
