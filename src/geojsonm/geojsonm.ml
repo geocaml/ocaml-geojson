@@ -174,12 +174,14 @@ let map_geometry f src dst =
     | `Lexeme (`Name "geometry" as t) -> (
         match G.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
-        | Ok ({ geojson = Geometry g; _ } as v) ->
-            let g' = f g in
-            enc (`Lexeme t);
-            encode_value encoder (G.to_json { v with geojson = g' });
-            go ()
-        | _ -> raise (Invalid_argument "Expected a geometry object"))
+        | Ok v -> (
+            match G.geojson v with
+            | Geometry g ->
+                let g' = f g in
+                enc (`Lexeme t);
+                encode_value encoder (G.to_json @@ G.typ_t g' (G.bbox v));
+                go ()
+            | _ -> raise (Invalid_argument "Expected a geometry object")))
     | `Lexeme _ as t ->
         enc t;
         go ()
@@ -222,10 +224,12 @@ let fold_geometry f init src =
     | `Lexeme (`Name "geometry") -> (
         match G.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
-        | Ok { geojson = Geometry g; _ } ->
-            let acc = f acc g in
-            go acc
-        | _ -> raise (Invalid_argument "Expected a geometry object"))
+        | Ok v -> (
+            match G.geojson v with
+            | Geometry g ->
+                let acc = f acc g in
+                go acc
+            | _ -> raise (Invalid_argument "Expected a geometry object")))
     | `Lexeme _ -> go acc
     | `Error e -> raise (Abort (`Error (loc (), e)))
     | `End -> acc

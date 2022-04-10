@@ -367,9 +367,12 @@ module Make (J : Geojson_intf.Json) = struct
 
   and t = { geojson : geojson; bbox : float array option }
 
+  let geojson t = t.geojson
+  let bbox t = t.bbox
+  let typ_t geojson bbox = { geojson; bbox }
   let geojson_to_t gjson bbox = { geojson = gjson; bbox }
 
-  let bbox json =
+  let json_to_bbox json =
     match J.to_array (decode_or_err J.to_float) json with
     | Ok v -> Some v
     | Error _ -> None
@@ -382,20 +385,20 @@ module Make (J : Geojson_intf.Json) = struct
             match
               Result.map (fun v -> Feature v) @@ Feature.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
+            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
             match
               Result.map (fun v -> FeatureCollection v)
               @@ Feature.Collection.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
+            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
             match
               Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx bbox)
+            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Error _ as e -> e)
     | None, _ ->

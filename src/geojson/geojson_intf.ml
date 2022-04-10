@@ -204,7 +204,18 @@ module type S = sig
     | FeatureCollection of Feature.Collection.t
     | Geometry of Geometry.t  (** A geojson object *)
 
-  type t = { geojson : geojson; bbox : float array option }
+  (* type t = { geojson : geojson; bbox : float array option } *)
+  type t
+
+  val geojson : t -> geojson
+  (** [geojson t] will extract geojson value from t (a GeoJSON object) *)
+
+  val bbox : t -> float array option
+  (** [bbox t] will extract bbox value from t (a GeoJSON object) *)
+
+  val typ_t : geojson -> float array option -> t
+  (** [typ_t geojson bbox] combines geojson and bbox to return a GeoJSON object
+      (a type {!t}) *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] will convert the JSON to a GeoJSON object (a type {!t}) or

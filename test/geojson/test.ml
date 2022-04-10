@@ -51,11 +51,13 @@ let _get_all_props s =
   let geo = Geojson.of_json json in
   let open Geojson in
   match geo with
-  | Ok { geojson = Feature f; _ } ->
-      Option.to_list @@ Geojson.Feature.properties f
-  | Ok { geojson = FeatureCollection fc; _ } ->
-      let fs = Geojson.Feature.Collection.features fc in
-      List.filter_map Geojson.Feature.properties fs
+  | Ok v -> (
+      match geojson v with
+      | Feature f -> Option.to_list @@ Geojson.Feature.properties f
+      | FeatureCollection f ->
+          let fs = Geojson.Feature.Collection.features f in
+          List.filter_map Geojson.Feature.properties fs
+      | _ -> [])
   | _ -> []
 
 let test_multi_line () =
@@ -64,9 +66,13 @@ let test_multi_line () =
   let geo = Geojson.of_json json in
   let geo, coords =
     match geo with
-    | Ok ({ geojson = Geometry (MultiLineString m); _ } as g) -> (g, m)
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (MultiLineString m) -> (g, m)
+        | _ -> assert false)
     | _ -> assert false
   in
+
   let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
@@ -91,7 +97,10 @@ let test_multi_point () =
   let geo = Geojson.of_json json in
   let geo, coords =
     match geo with
-    | Ok ({ geojson = Geometry (MultiPoint p); _ } as g) -> (g, p)
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (MultiPoint p) -> (g, p)
+        | _ -> assert false)
     | _ -> assert false
   in
   let json' = Geojson.to_json geo in
@@ -113,7 +122,7 @@ let test_bbox () =
   let geojson_obj = Geojson.of_json json in
   let bbox =
     match geojson_obj with
-    | Ok { geojson = _; bbox = Some x } -> x
+    | Ok v -> ( match Geojson.bbox v with Some x -> x | _ -> assert false)
     | _ -> assert false
   in
   let json' = Geojson.to_json @@ Result.get_ok geojson_obj in
