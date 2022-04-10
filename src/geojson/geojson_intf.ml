@@ -204,7 +204,6 @@ module type S = sig
     | FeatureCollection of Feature.Collection.t
     | Geometry of Geometry.t  (** A geojson object *)
 
-  (* type t = { geojson : geojson; bbox : float array option } *)
   type t
 
   val geojson : t -> geojson
@@ -213,7 +212,7 @@ module type S = sig
   val bbox : t -> float array option
   (** [bbox t] will extract bbox value from t (a GeoJSON object) *)
 
-  val typ_t : geojson -> float array option -> t
+  val v : ?bbox:float array -> geojson -> t
   (** [typ_t geojson bbox] combines geojson and bbox to return a GeoJSON object
       (a type {!t}) *)
 

@@ -179,7 +179,7 @@ let map_geometry f src dst =
             | Geometry g ->
                 let g' = f g in
                 enc (`Lexeme t);
-                encode_value encoder (G.to_json @@ G.typ_t g' (G.bbox v));
+                encode_value encoder (G.to_json @@ G.v ?bbox:(G.bbox v) g');
                 go ()
             | _ -> raise (Invalid_argument "Expected a geometry object")))
     | `Lexeme _ as t ->

@@ -369,7 +369,7 @@ module Make (J : Geojson_intf.Json) = struct
 
   let geojson t = t.geojson
   let bbox t = t.bbox
-  let typ_t geojson bbox = { geojson; bbox }
+  let v ?bbox geojson = { geojson; bbox }
   let geojson_to_t gjson bbox = { geojson = gjson; bbox }
 
   let json_to_bbox json =
