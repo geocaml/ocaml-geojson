@@ -95,7 +95,7 @@ val fold_props :
     Iterators are similar to map functions except they take a function [f] that
     takes a single element from the data-structure as an argument and returns
     [unit]. In that sense, they tend to be functions with side-effects, such as
-    [print_endline], [print_newline ()] *)
+    [print_endline] *)
 
 val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
 (** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
