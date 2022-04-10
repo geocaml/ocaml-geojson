@@ -172,13 +172,14 @@ let map_geometry f src dst =
     match Jsonm.decode decoder with
     (* TODO(patricoferris): A geometry collection could explode on us here... *)
     | `Lexeme (`Name "geometry" as t) -> (
-        match G.Geometry.base_of_json @@ decode_single_object decoder with
+        match G.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
-        | Ok g ->
+        | Ok ({ geojson = Geometry g; _ } as v) ->
             let g' = f g in
             enc (`Lexeme t);
-            encode_value encoder (G.Geometry.to_json g');
-            go ())
+            encode_value encoder (G.to_json { v with geojson = g' });
+            go ()
+        | _ -> raise (Invalid_argument "Expected a geometry object"))
     | `Lexeme _ as t ->
         enc t;
         go ()
@@ -219,11 +220,12 @@ let fold_geometry f init src =
   let rec go acc =
     match Jsonm.decode decoder with
     | `Lexeme (`Name "geometry") -> (
-        match G.Geometry.base_of_json @@ decode_single_object decoder with
+        match G.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
-        | Ok g ->
+        | Ok { geojson = Geometry g; _ } ->
             let acc = f acc g in
-            go acc)
+            go acc
+        | _ -> raise (Invalid_argument "Expected a geometry object"))
     | `Lexeme _ -> go acc
     | `Error e -> raise (Abort (`Error (loc (), e)))
     | `End -> acc

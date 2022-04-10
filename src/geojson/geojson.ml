@@ -23,17 +23,12 @@ let decode_or_err f v =
 module Make (J : Geojson_intf.Json) = struct
   type json = J.t
 
+  let bbox_to_json_or_empty bbox =
+    Option.(
+      if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
+
   module Geometry = struct
     type json = J.t
-
-    let bbox_to_json_or_empty bbox =
-      Option.(
-        if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
-
-    let wrapped_bbox_to_json_field wrapped_bbox =
-      Option.(
-        if is_some wrapped_bbox then bbox_to_json_or_empty @@ get wrapped_bbox
-        else [])
 
     module Position = struct
       (* We use a float array internally for performance *)
@@ -59,10 +54,6 @@ module Make (J : Geojson_intf.Json) = struct
             else false
           in
           loop 0
-
-      let of_json t =
-        try J.to_array (decode_or_err J.to_float) t
-        with Failure m -> Error (`Msg m)
 
       let to_json arr = J.array J.float arr
     end
@@ -97,7 +88,7 @@ module Make (J : Geojson_intf.Json) = struct
           ([
              ("type", J.string typ); ("coordinates", Position.to_json position);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     module MultiPoint = struct
@@ -119,7 +110,7 @@ module Make (J : Geojson_intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     module LineString = struct
@@ -145,7 +136,7 @@ module Make (J : Geojson_intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     module MultiLineString = struct
@@ -167,7 +158,7 @@ module Make (J : Geojson_intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     module Polygon = struct
@@ -198,7 +189,7 @@ module Make (J : Geojson_intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     module MultiPolygon = struct
@@ -221,7 +212,7 @@ module Make (J : Geojson_intf.Json) = struct
              ( "coordinates",
                J.array (J.array (J.array (J.array J.float))) positions );
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
 
     type t =
@@ -269,20 +260,19 @@ module Make (J : Geojson_intf.Json) = struct
               "A Geojson text should contain one object with a member `type`.")
 
     let rec to_json ?bbox = function
-      | Point point -> Point.to_json ~bbox:(Option.join bbox) point
-      | MultiPoint mp -> MultiPoint.to_json ~bbox:(Option.join bbox) mp
-      | LineString ls -> LineString.to_json ~bbox:(Option.join bbox) ls
-      | MultiLineString mls ->
-          MultiLineString.to_json ~bbox:(Option.join bbox) mls
-      | Polygon p -> Polygon.to_json ~bbox:(Option.join bbox) p
-      | MultiPolygon mp -> MultiPolygon.to_json ~bbox:(Option.join bbox) mp
+      | Point point -> Point.to_json ?bbox point
+      | MultiPoint mp -> MultiPoint.to_json ?bbox mp
+      | LineString ls -> LineString.to_json ?bbox ls
+      | MultiLineString mls -> MultiLineString.to_json ?bbox mls
+      | Polygon p -> Polygon.to_json ?bbox p
+      | MultiPolygon mp -> MultiPolygon.to_json ?bbox mp
       | Collection c ->
           J.obj
             ([
                ("type", J.string "GeometryCollection");
                ("geometries", J.list to_json c);
              ]
-            @ wrapped_bbox_to_json_field bbox)
+            @ bbox_to_json_or_empty bbox)
   end
 
   module Feature = struct
@@ -290,15 +280,6 @@ module Make (J : Geojson_intf.Json) = struct
 
     let geometry = fst
     let properties = snd
-
-    let bbox_to_json_or_empty bbox =
-      Option.(
-        if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
-
-    let wrapped_bbox_to_json_field wrapped_bbox =
-      Option.(
-        if is_some wrapped_bbox then bbox_to_json_or_empty @@ get wrapped_bbox
-        else [])
 
     let base_of_json json =
       match J.find json [ "type" ] with
@@ -333,7 +314,7 @@ module Make (J : Geojson_intf.Json) = struct
            ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
            ("properties", Option.(value ~default:J.null props));
          ]
-        @ wrapped_bbox_to_json_field bbox)
+        @ bbox_to_json_or_empty bbox)
 
     module Collection = struct
       type feature = t
@@ -375,7 +356,7 @@ module Make (J : Geojson_intf.Json) = struct
              ("type", J.string "FeatureCollection");
              ("features", J.list to_json t);
            ]
-          @ wrapped_bbox_to_json_field bbox)
+          @ bbox_to_json_or_empty bbox)
     end
   end
 
@@ -423,10 +404,10 @@ module Make (J : Geojson_intf.Json) = struct
             "A Geojson text should contain one object with a member `type`.")
 
   let to_json = function
-    | { geojson = Feature f; bbox } -> Feature.to_json ~bbox f
+    | { geojson = Feature f; bbox } -> Feature.to_json ?bbox f
     | { geojson = FeatureCollection fc; bbox } ->
-        Feature.Collection.to_json ~bbox fc
-    | { geojson = Geometry g; bbox } -> Geometry.to_json ~bbox g
+        Feature.Collection.to_json ?bbox fc
+    | { geojson = Geometry g; bbox } -> Geometry.to_json ?bbox g
 
   module Random = struct
     type geometry =

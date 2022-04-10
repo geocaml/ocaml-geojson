@@ -49,6 +49,7 @@ let (msg : [ `Msg of string ] Alcotest.testable) =
 let _get_all_props s =
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
+  let open Geojson in
   match geo with
   | Ok { geojson = Feature f; _ } ->
       Option.to_list @@ Geojson.Feature.properties f
@@ -61,12 +62,12 @@ let test_multi_line () =
   let s = read_file "files/valid/multilinestring.json" in
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
-  let coords =
+  let geo, coords =
     match geo with
-    | Ok { geojson = Geometry (MultiLineString m); _ } -> m
+    | Ok ({ geojson = Geometry (MultiLineString m); _ } as g) -> (g, m)
     | _ -> assert false
   in
-  let json' = Geojson.Geometry.MultiLineString.to_json coords in
+  let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
       Array.map (fun v ->
@@ -88,12 +89,12 @@ let test_multi_point () =
   let s = read_file "files/valid/multipoint.json" in
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
-  let coords =
+  let geo, coords =
     match geo with
-    | Ok { geojson = Geometry (MultiPoint p); _ } -> p
+    | Ok ({ geojson = Geometry (MultiPoint p); _ } as g) -> (g, p)
     | _ -> assert false
   in
-  let json' = Geojson.Geometry.MultiPoint.to_json coords in
+  let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
       Array.map (fun l -> [| Position.long l; Position.lat l |])
