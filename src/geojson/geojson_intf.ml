@@ -213,8 +213,8 @@ module type S = sig
   (** [bbox t] will extract bbox value from t (a GeoJSON object) *)
 
   val v : ?bbox:float array -> geojson -> t
-  (** [typ_t geojson bbox] combines geojson and bbox to return a GeoJSON object
-      (a type {!t}) *)
+  (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
+      type {!t}) *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] will convert the JSON to a GeoJSON object (a type {!t}) or
