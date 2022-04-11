@@ -98,10 +98,10 @@ val fold_props :
 
     [iter] functions takes two arguments, one the source to read the [GeoJSON]
     from and other, the function to apply to each element. Here, in the above
-    case, the function [print_geometry] applies to each of the [src] elements.
-    Additionally, [print_endline] is a printing function that takes a single
-    parameter of type [string] and prints an end-of-line character(s) after
-    printing the string *)
+    case, the [iter_geometry] takes up the function [print_geometry] which will
+    apply to each of the [src] elements. Additionally, [print_endline] is a
+    printing function that takes a single parameter of type [string] and prints
+    an end-of-line character(s) after printing the string *)
 
 val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
 (** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
