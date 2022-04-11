@@ -1,15 +1,7 @@
-let remove_coords p =
-  let open Geojsonm in
-  match p with G.Geometry.Polygon _ -> G.Geometry.(()) | p -> ()
+let print_geometry g =
+  print_endline @@ Ezjsonm.value_to_string (Geojsonm.G.Geometry.to_json g)
 
-let capitalise_nom obj =
-  let rec capitalise_nom acc = function
-    | [] -> List.rev acc
-    | ("nom", `String nom) :: xs ->
-        capitalise_nom (("nom", `String (String.uppercase_ascii nom)) :: acc) xs
-    | x :: xs -> capitalise_nom (x :: acc) xs
-  in
-  match obj with `O assoc -> `O (capitalise_nom [] assoc) | x -> x
+let print_property prop = print_endline @@ Ezjsonm.value_to_string prop
 
 let with_src f func =
   let ic = open_in f in
@@ -23,19 +15,15 @@ let with_src f func =
   res
 
 let () =
-  let dst = Buffer.create 1000 in
-  let print_or_fail = function
-    | Ok () -> Format.printf "%s\n\n" @@ Buffer.contents dst
+  let or_fail = function
+    | Ok () -> ()
     | Error e ->
         Geojsonm.Err.pp Format.err_formatter e;
         failwith "Internal err"
   in
-  print_or_fail
+  or_fail
     ( with_src "./input/simple.geojson" @@ fun src ->
-      Geojsonm.iter_geometry remove_coords src );
-  `Buffer dst;
-  Buffer.clear dst;
-  print_or_fail
+      Geojsonm.iter_geometry print_geometry src );
+  or_fail
     ( with_src "./input/simple.geojson" @@ fun src ->
-      Geojsonm.iter_props capitalise_nom src (`Buffer dst) );
-  Buffer.clear dst
+      Geojsonm.iter_props print_property src )
