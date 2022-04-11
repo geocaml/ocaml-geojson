@@ -217,8 +217,8 @@ module type S = sig
       type {!t}) *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
-  (** [of_json json] will convert the JSON to a GeoJSON object (a type {!t}) or
-      an error. *)
+  (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
+      error. *)
 
   val to_json : t -> json
   (** [to_json g] converts the GeoJSON object [g] to JSON *)
