@@ -245,3 +245,36 @@ let fold_props f init src =
     | `Await -> assert false
   in
   try Ok (go init) with Abort e -> Error e
+
+let iter_geometry f src =
+  let decoder = Jsonm.decoder src in
+  let loc () = Jsonm.decoded_range decoder in
+  let rec go () =
+    match Jsonm.decode decoder with
+    | `Lexeme (`Name "geometry") -> (
+        match G.Geometry.of_json @@ decode_single_object decoder with
+        | Error (`Msg m) -> raise (Abort (`Unexpected m))
+        | Ok g ->
+            f g;
+            go ())
+    | `Lexeme _ -> go ()
+    | `Error e -> raise (Abort (`Error (loc (), e)))
+    | `End -> ()
+    | `Await -> assert false
+  in
+  try Ok (go ()) with Abort e -> Error e
+
+let iter_props f src =
+  let decoder = Jsonm.decoder src in
+  let loc () = Jsonm.decoded_range decoder in
+  let rec go () =
+    match Jsonm.decode decoder with
+    | `Lexeme (`Name "properties") ->
+        f @@ decode_single_object decoder;
+        go ()
+    | `Lexeme _ -> go ()
+    | `Error e -> raise (Abort (`Error (loc (), e)))
+    | `End -> ()
+    | `Await -> assert false
+  in
+  try Ok (go ()) with Abort e -> Error e

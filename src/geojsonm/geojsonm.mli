@@ -79,3 +79,32 @@ val fold_geometry :
 val fold_props :
   ('a -> Ezjsonm.value -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
 (** [fold_props f init src] *)
+
+(** {2 Iterators}
+
+    Iterators are similar to map functions except they take a function [f] that
+    takes a single element from the data-structure as an argument and returns
+    [unit]. In that sense, they tend to be functions with side-effects, such as
+    [print_endline].
+
+    For example, we might want to print the [JSON] value to a [string].
+
+    {[
+      let print_geometry g =
+        print_endline @@ Ezjsonm.value_to_string (Geojsonm.G.Geometry.to_json g)
+
+      let values src = Geojsonm.iter_geometry print_geometry src
+    ]}
+
+    [iter] functions takes two arguments, one the source to read the [GeoJSON]
+    from and other, the function to apply to each element. Here, in the above
+    case, the [iter_geometry] takes up the function [print_geometry] which will
+    apply to each of the [src] elements. Additionally, [print_endline] is a
+    printing function that takes a single parameter of type [string] and prints
+    an end-of-line character(s) after printing the string *)
+
+val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
+(** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
+
+val iter_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
+(** [iter_props src ~f] will apply [f] to each feature's properties field. *)

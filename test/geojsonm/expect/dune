@@ -1,5 +1,5 @@
 (tests
- (names test)
+ (names test test_iters)
  (deps
   (source_tree input))
  (libraries geojsonm))
