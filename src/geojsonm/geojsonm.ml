@@ -258,7 +258,7 @@ let iter_geometry f src =
   let rec go () =
     match Jsonm.decode decoder with
     | `Lexeme (`Name "geometry") -> (
-        match G.Geometry.of_json @@ decode_single_object decoder with
+        match G.of_json @@ decode_single_object decoder with
         | Error (`Msg m) -> raise (Abort (`Unexpected m))
         | Ok g ->
             f g;

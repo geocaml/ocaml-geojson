@@ -94,7 +94,7 @@ val fold_props :
       let values src = Geojsonm.iter_geometry print_geometry src
     ]} *)
 
-val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
+val iter_geometry : (G.t -> unit) -> Jsonm.src -> (unit, Err.t) result
 (** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
 
 val iter_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
