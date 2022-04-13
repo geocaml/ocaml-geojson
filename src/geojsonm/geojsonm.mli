@@ -32,10 +32,7 @@ module G : Geojson.S with type json = Ezjsonm.value
     provide. *)
 
 val map_geometry :
-  (G.Geometry.t -> G.Geometry.t) ->
-  Jsonm.src ->
-  Jsonm.dst ->
-  (unit, Err.t) result
+  (G.Geometry.t -> G.geojson) -> Jsonm.src -> Jsonm.dst -> (unit, Err.t) result
 (** [map_geometry f src dst] will apply [f] to all GeoJson objects. This is
     essentially any
     {{:https://datatracker.ietf.org/doc/html/rfc7946#section-3.1} geometry
@@ -97,7 +94,7 @@ val fold_props :
       let values src = Geojsonm.iter_geometry print_geometry src
     ]} *)
 
-val iter_geometry : (G.Geometry.t -> unit) -> Jsonm.src -> (unit, Err.t) result
+val iter_geometry : (G.t -> unit) -> Jsonm.src -> (unit, Err.t) result
 (** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
 
 val iter_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result

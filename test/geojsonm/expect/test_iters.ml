@@ -1,5 +1,5 @@
 let print_geometry g =
-  print_endline @@ Ezjsonm.value_to_string (Geojsonm.G.Geometry.to_json g)
+  print_endline @@ Ezjsonm.value_to_string (Geojsonm.G.to_json g)
 
 let print_property prop = print_endline @@ Ezjsonm.value_to_string prop
 

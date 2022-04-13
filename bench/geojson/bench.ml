@@ -40,15 +40,17 @@ let find_code expected_code nom file =
   let code =
     match Geo.of_json s with
     | Error (`Msg m) -> failwith m
-    | Ok (FeatureCollection fcs) -> (
-        let features = Geo.Feature.Collection.features fcs in
-        match List.find_opt (fun f -> find f) features with
-        | Some f ->
-            Option.map (fun v ->
-                Ezjsonm.find v [ "code" ] |> Ezjsonm.get_string)
-            @@ Geo.Feature.properties f
-        | None -> None)
-    | Ok _ -> assert false
+    | Ok v -> (
+        match Geo.geojson v with
+        | FeatureCollection fcs -> (
+            let features = Geo.Feature.Collection.features fcs in
+            match List.find_opt (fun f -> find f) features with
+            | Some f ->
+                Option.map (fun v ->
+                    Ezjsonm.find v [ "code" ] |> Ezjsonm.get_string)
+                @@ Geo.Feature.properties f
+            | None -> None)
+        | _ -> assert false)
   in
   if expected_code = code then ()
   else failwith ("Got " ^ Option.value ~default:"None" code)

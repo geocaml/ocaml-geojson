@@ -49,21 +49,31 @@ let (msg : [ `Msg of string ] Alcotest.testable) =
 let _get_all_props s =
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
+  let open Geojson in
   match geo with
-  | Ok (Feature f) -> Option.to_list @@ Geojson.Feature.properties f
-  | Ok (FeatureCollection fc) ->
-      let fs = Geojson.Feature.Collection.features fc in
-      List.filter_map Geojson.Feature.properties fs
+  | Ok v -> (
+      match geojson v with
+      | Feature f -> Option.to_list @@ Geojson.Feature.properties f
+      | FeatureCollection f ->
+          let fs = Geojson.Feature.Collection.features f in
+          List.filter_map Geojson.Feature.properties fs
+      | _ -> [])
   | _ -> []
 
 let test_multi_line () =
   let s = read_file "files/valid/multilinestring.json" in
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
-  let coords =
-    match geo with Ok (Geometry (MultiLineString m)) -> m | _ -> assert false
+  let geo, coords =
+    match geo with
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (MultiLineString m) -> (g, m)
+        | _ -> assert false)
+    | _ -> assert false
   in
-  let json' = Geojson.Geometry.MultiLineString.to_json coords in
+
+  let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
       Array.map (fun v ->
@@ -85,10 +95,15 @@ let test_multi_point () =
   let s = read_file "files/valid/multipoint.json" in
   let json = Ezjsonm.value_from_string s in
   let geo = Geojson.of_json json in
-  let coords =
-    match geo with Ok (Geometry (MultiPoint p)) -> p | _ -> assert false
+  let geo, coords =
+    match geo with
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (MultiPoint p) -> (g, p)
+        | _ -> assert false)
+    | _ -> assert false
   in
-  let json' = Geojson.Geometry.MultiPoint.to_json coords in
+  let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
       Array.map (fun l -> [| Position.long l; Position.lat l |])
@@ -99,6 +114,23 @@ let test_multi_point () =
     "same point"
     [| [| 100.0; 0.0 |]; [| 101.0; 1.0 |] |]
     t;
+  Alcotest.(check ezjsonm) "same json" json json'
+
+let test_bbox () =
+  let s = read_file "files/valid/geo_with_bbox.json" in
+  let json = Ezjsonm.value_from_string s in
+  let geojson_obj = Geojson.of_json json in
+  let bbox =
+    match geojson_obj with
+    | Ok v -> ( match Geojson.bbox v with Some x -> x | _ -> assert false)
+    | _ -> assert false
+  in
+  let json' = Geojson.to_json @@ Result.get_ok geojson_obj in
+
+  Alcotest.(check (array (float 0.)))
+    "same bbox"
+    [| 100.0; 0.0; 101.0; 1.0 |]
+    bbox;
   Alcotest.(check ezjsonm) "same json" json json'
 
 let geojson =
@@ -133,4 +165,5 @@ let () =
           Alcotest.test_case "multi-point" `Quick test_multi_point;
         ] );
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
+      ("bbox", [ Alcotest.test_case "bbox" `Quick test_bbox ]);
     ]

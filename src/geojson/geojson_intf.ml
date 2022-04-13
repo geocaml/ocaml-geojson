@@ -64,9 +64,6 @@ end
 module type Json_conv = sig
   type t
   type json
-
-  val of_json : json -> (t, [ `Msg of string ]) result
-  val to_json : t -> json
 end
 
 (** {2 GeoJson Geometry Objects}
@@ -94,8 +91,6 @@ module type Geometry = sig
 
     val v : ?altitude:float -> long:float -> lat:float -> unit -> t
     (** A position constructor *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module Point : sig
@@ -107,8 +102,6 @@ module type Geometry = sig
 
     val v : Position.t -> t
     (** Create a poitn from a position. *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module MultiPoint : sig
@@ -120,8 +113,6 @@ module type Geometry = sig
 
     val v : Position.t array -> t
     (** Create a multipoint object from an array of positions. *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module LineString : sig
@@ -134,8 +125,6 @@ module type Geometry = sig
     val v : Position.t array -> t
     (** Create a line string from positions, will raise [Invalid_argument] if
         the array doesn't have at least two positions. *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module MultiLineString : sig
@@ -147,8 +136,6 @@ module type Geometry = sig
 
     val v : LineString.t array -> t
     (** Create a multiline string *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module Polygon : sig
@@ -161,8 +148,6 @@ module type Geometry = sig
     val v : LineString.t array -> t
     (** Create a polygon object from an array of close line strings (note no
         checking is down here to ensure the loops are indeed closed.) *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   module MultiPolygon : sig
@@ -174,8 +159,6 @@ module type Geometry = sig
 
     val v : Polygon.t array -> t
     (** Create a multi-polygon object from an array of {!Polygon.t}s *)
-
-    include Json_conv with type t := t and type json := json
   end
 
   type t =
@@ -216,12 +199,29 @@ module type S = sig
     end
   end
 
-  type t =
+  type geojson =
     | Feature of Feature.t
     | FeatureCollection of Feature.Collection.t
     | Geometry of Geometry.t  (** A geojson object *)
 
-  include Json_conv with type t := t and type json := json
+  type t
+
+  val geojson : t -> geojson
+  (** [geojson t] will extract geojson value from t (a GeoJSON object) *)
+
+  val bbox : t -> float array option
+  (** [bbox t] will extract bbox value from t (a GeoJSON object) *)
+
+  val v : ?bbox:float array -> geojson -> t
+  (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
+      type {!t}) *)
+
+  val of_json : json -> (t, [ `Msg of string ]) result
+  (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
+      error. *)
+
+  val to_json : t -> json
+  (** [to_json g] converts the GeoJSON object [g] to JSON *)
 
   module Random : sig
     type geometry =
