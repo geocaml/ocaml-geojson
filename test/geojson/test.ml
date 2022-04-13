@@ -116,6 +116,44 @@ let test_multi_point () =
     t;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_feature () = 
+  let s = read_file "files/valid/feature.json" in
+  let json = Ezjsonm.value_from_string s in
+  let feature = Geojson.of_json json in
+  let prop_from_file = Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json" in
+  let property = 
+    match _get_all_props s with
+    | [x] -> x
+    | _ -> assert false
+  in
+  let f, coord = 
+    match feature with
+    | Ok v -> (
+      match Geojson.geojson v with
+      | Feature t -> (
+        match Geojson.Feature.geometry t with
+        | Some MultiPoint p -> v,p
+        | _ -> assert false
+      )
+      | _ -> assert false
+    )
+    | _ -> assert false
+  in
+  let json' = Geojson.to_json f in
+  let t =
+    Geojson.Geometry.(
+      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      @@ MultiPoint.coordinates coord)
+  in
+
+  Alcotest.(check (array @@ array (float 0.)))
+    "same point"
+    [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
+    t;
+  Alcotest.(check ezjsonm) "same json" prop_from_file property;
+  Alcotest.(check ezjsonm) "same json" json json'
+
+
 let test_bbox () =
   let s = read_file "files/valid/geo_with_bbox.json" in
   let json = Ezjsonm.value_from_string s in
@@ -164,6 +202,7 @@ let () =
           Alcotest.test_case "multi-line" `Quick test_multi_line;
           Alcotest.test_case "multi-point" `Quick test_multi_point;
         ] );
+      ("feature", [ Alcotest.test_case "feature" `Quick test_feature ]);
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
       ("bbox", [ Alcotest.test_case "bbox" `Quick test_bbox ]);
     ]
