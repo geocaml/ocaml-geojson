@@ -116,27 +116,23 @@ let test_multi_point () =
     t;
   Alcotest.(check ezjsonm) "same json" json json'
 
-let test_feature () = 
+let test_feature () =
   let s = read_file "files/valid/feature.json" in
   let json = Ezjsonm.value_from_string s in
   let feature = Geojson.of_json json in
-  let prop_from_file = Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json" in
-  let property = 
-    match _get_all_props s with
-    | [x] -> x
-    | _ -> assert false
+  let prop_from_file =
+    Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json"
   in
-  let f, coord = 
+  let property = match _get_all_props s with [ x ] -> x | _ -> assert false in
+  let f, coord =
     match feature with
     | Ok v -> (
-      match Geojson.geojson v with
-      | Feature t -> (
-        match Geojson.Feature.geometry t with
-        | Some MultiPoint p -> v,p
-        | _ -> assert false
-      )
-      | _ -> assert false
-    )
+        match Geojson.geojson v with
+        | Feature t -> (
+            match Geojson.Feature.geometry t with
+            | Some (MultiPoint p) -> (v, p)
+            | _ -> assert false)
+        | _ -> assert false)
     | _ -> assert false
   in
   let json' = Geojson.to_json f in
@@ -153,6 +149,60 @@ let test_feature () =
   Alcotest.(check ezjsonm) "same json" prop_from_file property;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_feature_collection () =
+  let s = read_file "files/valid/featurecollection.json" in
+  let json = Ezjsonm.value_from_string s in
+  let feature_collection =
+    match Geojson.of_json json with Ok v -> v | _ -> assert false
+  in
+  let prop_from_file1 =
+    Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json"
+  in
+  let prop_from_file2 =
+    Ezjsonm.value_from_string @@ read_file "files/valid/prop2.json"
+  in
+  let prop1, prop2 =
+    match _get_all_props s with [ x; y ] -> (x, y) | _ -> assert false
+  in
+  let c1, c2 =
+    match Geojson.geojson feature_collection with
+    | FeatureCollection fc -> (
+        match Geojson.Feature.Collection.features fc with
+        | [ x; y ] -> (
+            match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
+            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | _, _ -> assert false)
+        | _ -> assert false)
+    | _ -> assert false
+  in
+  let json' = Geojson.to_json feature_collection in
+  let mp =
+    Geojson.Geometry.(
+      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      @@ MultiPoint.coordinates c1)
+  in
+  let ml =
+    Geojson.Geometry.(
+      Array.map (fun v ->
+          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          @@ LineString.coordinates v)
+      @@ MultiLineString.lines c2)
+  in
+
+  Alcotest.(check (array @@ array (float 0.)))
+    "same point"
+    [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
+    mp;
+  Alcotest.(check (array @@ array @@ array (float 0.)))
+    "same multi_line_string"
+    [|
+      [| [| 170.0; 45.0 |]; [| 180.0; 45.0 |] |];
+      [| [| -180.0; 45.0 |]; [| -170.0; 45.0 |] |];
+    |]
+    ml;
+  Alcotest.(check ezjsonm) "same json" prop_from_file1 prop1;
+  Alcotest.(check ezjsonm) "same json" prop_from_file2 prop2;
+  Alcotest.(check ezjsonm) "same json" json json'
 
 let test_bbox () =
   let s = read_file "files/valid/geo_with_bbox.json" in
@@ -203,6 +253,10 @@ let () =
           Alcotest.test_case "multi-point" `Quick test_multi_point;
         ] );
       ("feature", [ Alcotest.test_case "feature" `Quick test_feature ]);
+      ( "feature-collection",
+        [
+          Alcotest.test_case "feature-collection" `Quick test_feature_collection;
+        ] );
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
       ("bbox", [ Alcotest.test_case "bbox" `Quick test_bbox ]);
     ]
