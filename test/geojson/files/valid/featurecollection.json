@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [[125.1, 40.0], [155.9, 22.5]]
+      },
+      "properties": {
+        "name": "Dinagat Islands"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+              [170.0, 45.0], [180.0, 45.0]
+          ], [
+              [-180.0, 45.0], [-170.0, 45.0]
+          ]
+      ]
+      },
+      "properties": {
+        "name": "Martha",
+        "country": "Jamaica"
+      }
+    }
+  ]
+}
