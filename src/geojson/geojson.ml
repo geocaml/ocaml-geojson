@@ -278,7 +278,13 @@ module Make (J : Intf.Json) = struct
   end
 
   module Feature = struct
-    type t = Geometry.t option * json option
+    type id = [ `string of string | `int of int ]
+
+    type t = {
+      id : id option;
+      geometry : Geometry.t option;
+      properties : json option;
+    }
 
     let v ?properties geo = (Some geo, properties)
     let geometry = fst
@@ -290,13 +296,18 @@ module Make (J : Intf.Json) = struct
           match J.to_string typ with
           | Ok "Feature" -> (
               match
-                (J.find json["id"], J.find json [ "geometry" ], J.find json [ "properties" ])
+                ( J.find json [ "id" ],
+                  J.find json [ "geometry" ],
+                  J.find json [ "properties" ] )
               with
-              | Some geometry, props ->
+              | Some id, geometry, props ->
                   Result.map
                     (fun v -> (Option.some v, props))
-                    (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+                    (Geometry.of_json geometry)
+              | None, id, props ->
+                  Ok
+                    (None;
+                     props))
           | Ok s ->
               Error
                 (`Msg
@@ -314,7 +325,7 @@ module Make (J : Intf.Json) = struct
       J.obj
         [
           ("type", J.string "Feature");
-          ("id", option.(value ~default:J.null id));
+          ("id", Option.(value ~default:J.null id));
           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
           ("properties", Option.(value ~default:J.null props));
         ]

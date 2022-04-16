@@ -192,12 +192,15 @@ module type S = sig
   module Geometry : Geometry with type json = json
 
   module Feature : sig
+    type id
+
     type t
     (** A feature object is a geojson object with optional geometry and
         properties members. *)
 
     val geometry : t -> Geometry.t option
     val properties : t -> json option
+    val id : t -> id option
 
     include Json_conv with type t := t and type json := json
 
