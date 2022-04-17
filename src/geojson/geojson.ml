@@ -12,6 +12,7 @@
    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
    DEALINGS IN THE SOFTWARE.
 *)
+module Intf = Geojson_intf
 
 module type S = Geojson_intf.S
 
@@ -278,6 +279,7 @@ module Make (J : Geojson_intf.Json) = struct
   module Feature = struct
     type t = Geometry.t option * json option
 
+    let v ?properties geo = (Some geo, properties)
     let geometry = fst
     let properties = snd
 
@@ -321,6 +323,7 @@ module Make (J : Geojson_intf.Json) = struct
       type nonrec t = feature list
 
       let features = Fun.id
+      let v = Fun.id
 
       let base_of_json json =
         match J.find json [ "type" ] with

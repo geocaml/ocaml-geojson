@@ -189,11 +189,18 @@ module type S = sig
 
     include Json_conv with type t := t and type json := json
 
+    val v : ?properties:json -> Geometry.t -> t
+    (** [v geo] creates a new feature object, you may wish to provide a
+        [properties] JSON object for the feature too. *)
+
     module Collection : sig
       type feature = t
       type t
 
       val features : t -> feature list
+
+      val v : feature list -> t
+      (** [v features] creates a feature collection from a list of features *)
 
       include Json_conv with type t := t and type json := json
     end
