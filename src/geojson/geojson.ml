@@ -286,11 +286,7 @@ module Make (J : Intf.Json) = struct
       properties : json option;
     }
 
-    let v ?properties geo = (Some geo, properties)
-    let geometry = fst
-    let properties = snd
-
-    let base_of_json json =
+    let of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
@@ -300,14 +296,9 @@ module Make (J : Intf.Json) = struct
                   J.find json [ "geometry" ],
                   J.find json [ "properties" ] )
               with
-              | Some id, geometry, props ->
-                  Result.map
-                    (fun v -> (Option.some v, props))
-                    (Geometry.of_json geometry)
-              | None, id, props ->
-                  Ok
-                    (None;
-                     props))
+              | id -> id
+              | geometry -> Geometry.of_json geometry
+              | properties -> (Option.Some v, props))
           | Ok s ->
               Error
                 (`Msg
@@ -321,7 +312,7 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json (id, t, props) =
+    let to_json (t, id, props) =
       J.obj
         [
           ("type", J.string "Feature");
