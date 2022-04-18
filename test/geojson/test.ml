@@ -221,6 +221,69 @@ let test_bbox () =
     bbox;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_3d_feature_collection () =
+  let s = read_file "files/valid/3d_featurecollection.json" in
+  let json = Ezjsonm.value_from_string s in
+  let feature_collection =
+    match Geojson.of_json json with Ok v -> v | _ -> assert false
+  in
+  let prop_from_file1 =
+    Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json"
+  in
+  let prop_from_file2 =
+    Ezjsonm.value_from_string @@ read_file "files/valid/prop2.json"
+  in
+  let prop1, prop2 =
+    match _get_all_props s with [ x; y ] -> (x, y) | _ -> assert false
+  in
+  let c1, c2 =
+    match Geojson.geojson feature_collection with
+    | FeatureCollection fc -> (
+        match Geojson.Feature.Collection.features fc with
+        | [ x; y ] -> (
+            match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
+            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | _, _ -> assert false)
+        | _ -> assert false)
+    | _ -> assert false
+  in
+  let json' = Geojson.to_json feature_collection in
+  let mp =
+    Geojson.Geometry.(
+      Array.map (fun l ->
+          [|
+            Position.long l; Position.lat l; Option.get @@ Position.altitude l;
+          |])
+      @@ MultiPoint.coordinates c1)
+  in
+  let ml =
+    Geojson.Geometry.(
+      Array.map (fun v ->
+          Array.map (fun l ->
+              [|
+                Position.long l;
+                Position.lat l;
+                Option.get @@ Position.altitude l;
+              |])
+          @@ LineString.coordinates v)
+      @@ MultiLineString.lines c2)
+  in
+
+  Alcotest.(check (array @@ array (float 0.)))
+    "same point"
+    [| [| 130.1; 40.0; 33.3 |]; [| 143.7; 22.5; 15.0 |] |]
+    mp;
+  Alcotest.(check (array @@ array @@ array (float 0.)))
+    "same multi_line_string"
+    [|
+      [| [| 170.0; 45.0; 60.2 |]; [| 180.0; 45.0; 35.0 |] |];
+      [| [| -180.0; 45.0; 35.0 |]; [| -170.0; 45.0; 60.2 |] |];
+    |]
+    ml;
+  Alcotest.(check ezjsonm) "same json" prop_from_file1 prop1;
+  Alcotest.(check ezjsonm) "same json" prop_from_file2 prop2;
+  Alcotest.(check ezjsonm) "same json" json json'
+
 let geojson =
   Alcotest.testable
     (fun ppf p -> Fmt.pf ppf "%s" (Ezjsonm.value_to_string (Geojson.to_json p)))
@@ -259,4 +322,5 @@ let () =
         ] );
       ("random", [ Alcotest.test_case "simple-random" `Quick test_random ]);
       ("bbox", [ Alcotest.test_case "bbox" `Quick test_bbox ]);
+      ("3D", [ Alcotest.test_case "3D" `Quick test_3d_feature_collection ]);
     ]
