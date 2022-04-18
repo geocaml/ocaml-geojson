@@ -21,7 +21,7 @@ let ( let* ) = Result.bind
 let decode_or_err f v =
   match f v with Ok x -> x | Error (`Msg m) -> failwith m
 
-module Make (J : Geojson_intf.Json) = struct
+module Make (J : Intf.Json) = struct
   type json = J.t
 
   let bbox_to_json_or_empty bbox =

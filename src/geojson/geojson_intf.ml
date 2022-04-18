@@ -36,6 +36,12 @@ module type Json = sig
   val float : float -> t
   (** Converts a float to JSON *)
 
+  val to_int : t -> (int, [ `Msg of string ]) result
+  (** Convert the JSON to an integer. *)
+
+  val int : int -> t
+  (** Converts an integer to JSON *)
+
   val to_list : (t -> 'a) -> t -> ('a list, [ `Msg of string ]) result
   (** [to_list f] converts the JSON array to a list and applies [f] to each
       element to convert them too. *)
@@ -48,6 +54,9 @@ module type Json = sig
 
   val array : ('a -> t) -> 'a array -> t
   (** Like {!list} except for OCaml arrays *)
+
+  val to_obj : t -> ((string * t) list, [ `Msg of string ]) result
+  (** Convert the JSON object to an association list *)
 
   val obj : (string * t) list -> t
   (** A JSON object from an association list *)
