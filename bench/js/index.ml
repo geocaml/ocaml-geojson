@@ -9,10 +9,13 @@ module Ezjsonm_parser = struct
   let string = Ezjsonm.string
   let to_float t = catch_err Ezjsonm.get_float t
   let float = Ezjsonm.float
+  let to_int t = catch_err Ezjsonm.get_int t
+  let int = Ezjsonm.int
   let to_list f t = catch_err (Ezjsonm.get_list f) t
   let list f t = Ezjsonm.list f t
   let to_array f t = Result.map Array.of_list @@ to_list f t
   let array f t = list f (Array.to_list t)
+  let to_obj t = catch_err Ezjsonm.get_dict t
   let obj = Ezjsonm.dict
   let null = `Null
   let is_null = function `Null -> true | _ -> false
@@ -21,8 +24,7 @@ end
 module Brr_parser = struct
   type t = Jv.t
 
-  let catch_err f v =
-    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+  let catch_err f v = try Ok (f v) with _ -> Error (`Msg "Brr Error")
 
   let find t s =
     let rec loop jv = function
@@ -35,10 +37,22 @@ module Brr_parser = struct
   let string = Jv.of_string
   let to_float t = catch_err Jv.to_float t
   let float = Jv.of_float
+  let to_int t = catch_err Jv.to_int t
+  let int = Jv.of_int
   let to_list f t = catch_err (Jv.to_list f) t
   let list f t = Jv.of_list f t
   let to_array f t = catch_err (Jv.to_array f) t
   let array f t = Jv.of_array f t
+  let obj = Jv.get Jv.global "Object"
+
+  let keys jv =
+    let keys_method = Jv.get obj "keys" in
+    Jv.apply keys_method [| jv |] |> Jv.to_jstr_list |> List.map Jstr.to_string
+
+  let to_obj t =
+    let keys = keys t in
+    Ok (List.map (fun key -> (key, Jv.get t key)) keys)
+
   let obj arr = Jv.obj (Array.of_list arr)
   let null = Jv.null
   let is_null = Jv.is_null
