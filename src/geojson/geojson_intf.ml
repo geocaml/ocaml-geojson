@@ -152,7 +152,7 @@ module type Geometry = sig
     (** A close loop with optional rings *)
 
     val rings : t -> LineString.t array
-    (** [rings t] returns the linear rings contained in t (a Polygon object) *)
+    (** [rings t] returns the linear rings contained in [t] (a Polygon object) *)
 
     val interior_ring : t -> LineString.t
     val exterior_rings : t -> LineString.t array
