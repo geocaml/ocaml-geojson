@@ -166,6 +166,7 @@ module Make (J : Intf.Json) = struct
       type t = LineString.t array
 
       let typ = "Polygon"
+      let rings = Fun.id
       let interior_ring t = t.(0)
 
       (* If used a lot, should changed to cstruct style off and len
