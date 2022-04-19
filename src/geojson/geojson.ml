@@ -286,7 +286,7 @@ module Make (J : Intf.Json) = struct
       properties : json option;
     }
 
-    let id_of_json json =
+    let of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
