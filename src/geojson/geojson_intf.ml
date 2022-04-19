@@ -192,7 +192,7 @@ module type S = sig
   module Geometry : Geometry with type json = json
 
   module Feature : sig
-    type id
+    type id = [ `String of string | `Int of int ]
 
     type t
     (** A feature object is a geojson object with optional geometry and
