@@ -160,6 +160,98 @@ let test_linestring () =
     l;
   Alcotest.(check ezjsonm) "same json" json json'
 
+let test_polygon () =
+  let s = read_file "files/valid/polygon.json" in
+  let json = Ezjsonm.value_from_string s in
+  let geo = Geojson.of_json json in
+  let geo, coords =
+    match geo with
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (Polygon p) -> (g, p)
+        | _ -> assert false)
+    | _ -> assert false
+  in
+
+  let json' = Geojson.to_json geo in
+  let t =
+    Geojson.Geometry.(
+      Array.map (fun v ->
+          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          @@ LineString.coordinates v)
+      @@ Polygon.rings coords)
+  in
+
+  Alcotest.(check (array @@ array @@ array (float 0.)))
+    "same polygon"
+    [|
+      [|
+        [| 100.0; 0.0 |];
+        [| 101.0; 0.0 |];
+        [| 101.0; 1.0 |];
+        [| 100.0; 1.0 |];
+        [| 100.0; 0.0 |];
+      |];
+    |]
+    t;
+  Alcotest.(check ezjsonm) "same json" json json'
+
+let test_multi_polygon () =
+  let s = read_file "files/valid/multi_polygon.json" in
+  let json = Ezjsonm.value_from_string s in
+  let geo = Geojson.of_json json in
+  let geo, coords =
+    match geo with
+    | Ok g -> (
+        match Geojson.geojson g with
+        | Geometry (MultiPolygon mp) -> (g, mp)
+        | _ -> assert false)
+    | _ -> assert false
+  in
+
+  let json' = Geojson.to_json geo in
+  let t =
+    Geojson.Geometry.(
+      Array.map (fun v ->
+          Array.map (fun n ->
+              Array.map (fun l -> [| Position.long l; Position.lat l |])
+              @@ LineString.coordinates n)
+          @@ Polygon.rings v)
+      @@ MultiPolygon.polygons coords)
+  in
+
+  Alcotest.(check (array @@ array @@ array @@ array (float 0.)))
+    "same multi-polygon"
+    [|
+      [|
+        [|
+          [| 102.0; 2.0 |];
+          [| 103.0; 2.0 |];
+          [| 103.0; 3.0 |];
+          [| 102.0; 3.0 |];
+          [| 102.0; 2.0 |];
+        |];
+      |];
+      [|
+        [|
+          [| 100.0; 0.0 |];
+          [| 101.0; 0.0 |];
+          [| 101.0; 1.0 |];
+          [| 100.0; 1.0 |];
+          [| 100.0; 0.0 |];
+        |];
+        [|
+          [| 100.2; 0.2 |];
+          [| 100.2; 0.8 |];
+          [| 100.8; 0.8 |];
+          [| 100.8; 0.2 |];
+          [| 100.2; 0.2 |];
+        |];
+      |];
+    |]
+    t;
+  Alcotest.(check ezjsonm) "same json" json json'
+
 let test_feature () =
   let s = read_file "files/valid/feature.json" in
   let json = Ezjsonm.value_from_string s in
@@ -360,6 +452,8 @@ let () =
           Alcotest.test_case "multi-point" `Quick test_multi_point;
           Alcotest.test_case "point" `Quick test_point;
           Alcotest.test_case "linestring" `Quick test_linestring;
+          Alcotest.test_case "polygon" `Quick test_polygon;
+          Alcotest.test_case "multi_polygon" `Quick test_multi_polygon;
         ] );
       ("feature", [ Alcotest.test_case "feature" `Quick test_feature ]);
       ( "feature-collection",
