@@ -83,6 +83,7 @@ module Make (J : Intf.Json) = struct
       let v position = position
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
       let base_of_json json = parse_by_type json parse_coords typ
+      let (Geojson_of_json json) = parse_by_type json parse_coords typ
 
       let to_json ?bbox position =
         J.obj
