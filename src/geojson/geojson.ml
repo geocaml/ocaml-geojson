@@ -280,13 +280,21 @@ module Make (J : Intf.Json) = struct
   module Feature = struct
     type id = [ `String of string | `Int of int ]
 
+    let id_of_json id =
+      match J.to_string id with
+      | Ok s -> `String s
+      | Error _ -> (
+          match J.to_int id with
+          | Ok i -> `Int i
+          | Error _ -> failwith "Failed to parse feature ID")
+
     type t = {
       id : id option;
       geometry : Geometry.t option;
       properties : json option;
     }
 
-    let of_json json =
+    let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
@@ -296,7 +304,7 @@ module Make (J : Intf.Json) = struct
               let properties = J.find json [ "properties" ] in
               let id = Option.map id_of_json id in
               let geometry =
-                Option.map (decode_or_err Geometry.of_json) geometry
+                Option.map (decode_or_err Geometry.base_of_json) geometry
               in
               Ok { id; geometry; properties }
           | Ok s ->
@@ -312,14 +320,15 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json { id; geometry; props } =
+    let to_json { id; geometry; properties } ?bbox =
       J.obj
-        [
-          ("type", J.string "Feature");
-          ("id", Option.(value ~default:J.null id));
-          ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-          ("properties", Option.(value ~default:J.null props));
-        ]
+        ([
+           ("type", J.string "Feature");
+           ("id", Option.(value ~default:J.null id));
+           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+           ("properties", Option.(value ~default:J.null properties));
+         ]
+        @ bbox_to_json_or_empty bbox)
 
     module Collection = struct
       type feature = t
