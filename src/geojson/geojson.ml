@@ -288,6 +288,8 @@ module Make (J : Intf.Json) = struct
           | Ok i -> `Int i
           | Error _ -> failwith "Failed to parse feature ID")
 
+    let id_to_json = function `String s -> J.string s | `Int i -> J.int i
+
     type t = {
       id : id option;
       geometry : Geometry.t option;
@@ -320,11 +322,11 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json { id; geometry; properties } ?bbox =
+    let to_json { id; geometry; properties } ?bbox t =
       J.obj
         ([
            ("type", J.string "Feature");
-           ("id", Option.(value ~default:J.null id));
+           ("id", Option.(value ~default:J.null @@ map id_to_json id));
            ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
            ("properties", Option.(value ~default:J.null properties));
          ]
