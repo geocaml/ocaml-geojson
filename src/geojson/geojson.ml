@@ -322,12 +322,13 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json { id; geometry; properties } ?bbox t =
+    let to_json ?bbox { id; geometry; properties } =
       J.obj
         ([
            ("type", J.string "Feature");
            ("id", Option.(value ~default:J.null @@ map id_to_json id));
-           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+           ( "geometry",
+             Option.(value ~default:J.null @@ map Geometry.to_json geometry) );
            ("properties", Option.(value ~default:J.null properties));
          ]
         @ bbox_to_json_or_empty bbox)
