@@ -167,11 +167,11 @@ module Make (J : Intf.Json) = struct
 
       let typ = "Polygon"
       let rings = Fun.id
-      let interior_ring t = t.(0)
+      let exterior_ring t = t.(0)
 
       (* If used a lot, should changed to cstruct style off and len
          to avoid the allocations here. *)
-      let exterior_rings t = Array.sub t 1 (Array.length t - 1)
+      let interior_rings t = Array.sub t 1 (Array.length t - 1)
       let v = Fun.id
 
       let parse_coords coords =
