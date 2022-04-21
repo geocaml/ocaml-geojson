@@ -258,7 +258,12 @@ module type S = sig
       | MultiPolygon of int * int
       | Collection of geometry list
 
-    type feature = { properties : json option; geometry : geometry }
+    type feature = {
+      properties : json option;
+      geometry : geometry;
+      foreign_members : (string * json) list option;
+    }
+
     type r = FC of feature list | F of feature | G of geometry
 
     (** {3 Generate random geojson}
