@@ -83,7 +83,6 @@ module Make (J : Intf.Json) = struct
       let v position = position
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
       let base_of_json json = parse_by_type json parse_coords typ
-      let (Geojson_of_json json) = parse_by_type json parse_coords typ
 
       let to_json ?bbox position =
         J.obj
@@ -281,9 +280,10 @@ module Make (J : Intf.Json) = struct
   module Feature = struct
     type t = Geometry.t option * json option
 
-    let v ?properties geo = (Some geo, properties)
+    let v ?properties geo = (Some geo, properties, foreign_members)
     let geometry = fst
     let properties = snd
+    let foreign_members = thrd
 
     let base_of_json json =
       match J.find json [ "type" ] with
@@ -291,13 +291,17 @@ module Make (J : Intf.Json) = struct
           match J.to_string typ with
           | Ok "Feature" -> (
               match
-                (J.find json [ "geometry" ], J.find json [ "properties" ])
+                ( J.find json [ "geometry" ],
+                  J.find json [ "properties" ],
+                  J.find json [ "foreign_members" ] )
               with
-              | Some geometry, props ->
+              | Some geometry, props, foreign_members ->
                   Result.map
                     (fun v -> (Option.some v, props))
+                    (fun v -> (Option.some v, foreign_members))
                     (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+              | None, props, foreign_members -> Ok (None, props, foreign_members)
+              )
           | Ok s ->
               Error
                 (`Msg

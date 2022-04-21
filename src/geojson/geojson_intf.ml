@@ -183,8 +183,6 @@ module type Geometry = sig
     | Collection of t list
 
   include Json_conv with type t := t and type json := json
-
-  val foreign_members : t -> json
 end
 
 module type S = sig
@@ -200,7 +198,6 @@ module type S = sig
 
     val geometry : t -> Geometry.t option
     val properties : t -> json option
-    val foreign_members : t -> json
 
     include Json_conv with type t := t and type json := json
 
@@ -218,8 +215,6 @@ module type S = sig
       (** [v features] creates a feature collection from a list of features *)
 
       include Json_conv with type t := t and type json := json
-
-      val foreign_members : t -> json
     end
   end
 
@@ -239,9 +234,6 @@ module type S = sig
   val v : ?bbox:float array -> geojson -> t
   (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
       type {!t}) *)
-
-  val foreign_members : t -> json
-  (** [foreign_members t] will extract foreign members from t (a GeoJSON object) *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
@@ -263,7 +255,7 @@ module type S = sig
     type feature = {
       properties : json option;
       geometry : geometry;
-      foreign_members : json;
+      foreign_members : (string * json) list option;
     }
 
     type r = FC of feature list | F of feature | G of geometry
