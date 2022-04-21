@@ -155,7 +155,13 @@ module type Geometry = sig
     (** [rings t] returns the linear rings contained in [t] (a Polygon object) *)
 
     val exterior_ring : t -> LineString.t
+    (** [exterior_ring t] returns the first linear ring contained in [t] (a
+        Polygon object). This ring bounds the surface *)
+
     val interior_rings : t -> LineString.t array
+    (** If [t] (a Polygon object) contains more than 1 linear ring,
+        [interior_rings t] returns the rest of the linear rings apart from the
+        first. These rings (if present), bound the holes. *)
 
     val v : LineString.t array -> t
     (** Create a polygon object from an array of close line strings (note no
