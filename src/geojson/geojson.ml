@@ -278,25 +278,37 @@ module Make (J : Intf.Json) = struct
   end
 
   module Feature = struct
-    type t = Geometry.t option * json option
+    type id = [ `String of string | `Int of int ]
 
-    let v ?properties geo = (Some geo, properties)
-    let geometry = fst
-    let properties = snd
+    let id_of_json id =
+      match J.to_string id with
+      | Ok s -> `String s
+      | Error _ -> (
+          match J.to_int id with
+          | Ok i -> `Int i
+          | Error _ -> failwith "Failed to parse feature ID")
+
+    let id_to_json = function `String s -> J.string s | `Int i -> J.int i
+
+    type t = {
+      id : id option;
+      geometry : Geometry.t option;
+      properties : json option;
+    }
 
     let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
-          | Ok "Feature" -> (
-              match
-                (J.find json [ "geometry" ], J.find json [ "properties" ])
-              with
-              | Some geometry, props ->
-                  Result.map
-                    (fun v -> (Option.some v, props))
-                    (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+          | Ok "Feature" ->
+              let id = J.find json [ "id" ] in
+              let geometry = J.find json [ "geometry" ] in
+              let properties = J.find json [ "properties" ] in
+              let id = Option.map id_of_json id in
+              let geometry =
+                Option.map (decode_or_err Geometry.base_of_json) geometry
+              in
+              Ok { id; geometry; properties }
           | Ok s ->
               Error
                 (`Msg
@@ -310,12 +322,14 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json ?bbox (t, props) =
+    let to_json ?bbox { id; geometry; properties } =
       J.obj
         ([
            ("type", J.string "Feature");
-           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-           ("properties", Option.(value ~default:J.null props));
+           ("id", Option.(value ~default:J.null @@ map id_to_json id));
+           ( "geometry",
+             Option.(value ~default:J.null @@ map Geometry.to_json geometry) );
+           ("properties", Option.(value ~default:J.null properties));
          ]
         @ bbox_to_json_or_empty bbox)
 
@@ -436,9 +450,9 @@ module Make (J : Intf.Json) = struct
             { geojson = FeatureCollection features; bbox = None }
         | F f -> { geojson = Feature (random_f f); bbox = None }
         | G g -> { geojson = Geometry (random_g g); bbox = None }
-      and random_f { properties; geometry } =
+      and random_f { geometry; properties } =
         let geo = random_g geometry in
-        (Some geo, properties)
+        { geo; properties }
       and random_g = function
         | Point -> Geometry.Point (random_point ())
         | MultiPoint i ->
