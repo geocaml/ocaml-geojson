@@ -450,9 +450,9 @@ module Make (J : Intf.Json) = struct
             { geojson = FeatureCollection features; bbox = None }
         | F f -> { geojson = Feature (random_f f); bbox = None }
         | G g -> { geojson = Geometry (random_g g); bbox = None }
-      and random_f { properties; geometry } =
+      and random_f { geometry; properties } =
         let geo = random_g geometry in
-        (Some geo, properties)
+        { geo; properties }
       and random_g = function
         | Point -> Geometry.Point (random_point ())
         | MultiPoint i ->
