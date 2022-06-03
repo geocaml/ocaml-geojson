@@ -204,10 +204,13 @@ module type S = sig
 
     val geometry : t -> Geometry.t option
     val properties : t -> json option
+    val foreign_members : t -> (string * json) list option
 
     include Json_conv with type t := t and type json := json
 
     val v : ?properties:json -> Geometry.t -> t
+
+    val w : ?foreign_members:(string * json) list -> Geometry.t -> t
     (** [v geo] creates a new feature object, you may wish to provide a
         [properties] JSON object for the feature too. *)
 
@@ -241,6 +244,8 @@ module type S = sig
   (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
       type {!t}) *)
 
+  val foreign_members : t -> (string * json) list option
+
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
       error. *)
@@ -258,7 +263,12 @@ module type S = sig
       | MultiPolygon of int * int
       | Collection of geometry list
 
-    type feature = { properties : json option; geometry : geometry }
+    type feature = {
+      properties : json option;
+      geometry : geometry;
+      foreign_members : (string * json) list option;
+    }
+
     type r = FC of feature list | F of feature | G of geometry
 
     (** {3 Generate random geojson}
