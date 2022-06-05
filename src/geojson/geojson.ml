@@ -28,6 +28,12 @@ module Make (J : Intf.Json) = struct
     Option.(
       if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
 
+  let foreign_members_or_empty foreign_members =
+    Option.(
+      if is_some foreign_members then
+        [ ("foreign_members", get foreign_members) ]
+      else [])
+
   module Geometry = struct
     type json = J.t
 
@@ -319,6 +325,14 @@ module Make (J : Intf.Json) = struct
          ]
         @ bbox_to_json_or_empty bbox)
 
+    let to_json ?foreign_members t =
+      J.obj
+        ([
+           ("type", J.string "Feature");
+           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
+         ]
+        @ foreign_members_or_empty foreign_members)
+
     module Collection = struct
       type feature = t
       type nonrec t = feature list
@@ -411,6 +425,7 @@ module Make (J : Intf.Json) = struct
             "A Geojson text should contain one object with a member `type`.")
 
   let to_json = function
+    | Feature f -> Feature.to_json ?foreign_members f
     | { geojson = Feature f; bbox } -> Feature.to_json ?bbox f
     | { geojson = FeatureCollection fc; bbox } ->
         Feature.Collection.to_json ?bbox fc

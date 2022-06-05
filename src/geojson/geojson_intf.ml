@@ -241,6 +241,10 @@ module type S = sig
   (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
       type {!t}) *)
 
+  val foreign_members : t -> (string * json) list option
+  (** [foreign_members t] will extract name/value pair of a foreign member from
+      t (a GeoJSON object) *)
+
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
       error. *)
