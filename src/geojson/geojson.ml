@@ -92,7 +92,8 @@ module Make (J : Intf.Json) = struct
           ([
              ("type", J.string typ); ("coordinates", Position.to_json position);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     module MultiPoint = struct
@@ -114,7 +115,8 @@ module Make (J : Intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     module LineString = struct
@@ -140,7 +142,8 @@ module Make (J : Intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     module MultiLineString = struct
@@ -162,7 +165,8 @@ module Make (J : Intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     module Polygon = struct
@@ -194,7 +198,8 @@ module Make (J : Intf.Json) = struct
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     module MultiPolygon = struct
@@ -217,7 +222,8 @@ module Make (J : Intf.Json) = struct
              ( "coordinates",
                J.array (J.array (J.array (J.array J.float))) positions );
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
 
     type t =
@@ -321,7 +327,8 @@ module Make (J : Intf.Json) = struct
            ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
            ("properties", Option.(value ~default:J.null props));
          ]
-        @ bbox_to_json_or_empty bbox)
+        @ bbox_to_json_or_empty bbox
+        @ foreign_members_or_empty foreign_members)
 
     module Collection = struct
       type feature = t
@@ -364,7 +371,8 @@ module Make (J : Intf.Json) = struct
              ("type", J.string "FeatureCollection");
              ("features", J.list to_json t);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members_or_empty foreign_members)
     end
   end
 
