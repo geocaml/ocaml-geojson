@@ -323,14 +323,6 @@ module Make (J : Intf.Json) = struct
          ]
         @ bbox_to_json_or_empty bbox)
 
-    (*let to_json ?foreign_members t =
-      J.obj
-        ([
-           ("type", J.string "Feature");
-           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-         ]
-        @ foreign_members_or_empty foreign_members) *)
-
     module Collection = struct
       type feature = t
       type nonrec t = feature list
@@ -389,6 +381,7 @@ module Make (J : Intf.Json) = struct
 
   let geojson t = t.geojson
   let bbox t = t.bbox
+  let foreign_members t = t.foreign_members
   let v ?bbox ?foreign_members geojson = { geojson; bbox; foreign_members }
 
   let geojson_to_t gjson bbox foreign_members =
