@@ -29,10 +29,7 @@ module Make (J : Intf.Json) = struct
       if is_some bbox then [ ("bbox", J.array J.float (get bbox)) ] else [])
 
   let foreign_members_or_empty foreign_members =
-    Option.(
-      if is_some foreign_members then
-        [ ("foreign_members", get foreign_members) ]
-      else [])
+    Option.(if is_some foreign_members then get foreign_members else [])
 
   module Geometry = struct
     type json = J.t
@@ -90,7 +87,7 @@ module Make (J : Intf.Json) = struct
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox position =
+      let to_json ?bbox ?foreign_members position =
         J.obj
           ([
              ("type", J.string typ); ("coordinates", Position.to_json position);
@@ -111,7 +108,7 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?foreign_members positions =
         J.obj
           ([
              ("type", J.string typ);
@@ -137,7 +134,7 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?foreign_members positions =
         J.obj
           ([
              ("type", J.string typ);
@@ -159,7 +156,7 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?foreign_members positions =
         J.obj
           ([
              ("type", J.string typ);
@@ -191,7 +188,7 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?foreign_members positions =
         J.obj
           ([
              ("type", J.string typ);
@@ -213,7 +210,7 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?foreign_members positions =
         J.obj
           ([
              ("type", J.string typ);
@@ -267,13 +264,14 @@ module Make (J : Intf.Json) = struct
             (`Msg
               "A Geojson text should contain one object with a member `type`.")
 
-    let rec to_json ?bbox = function
-      | Point point -> Point.to_json ?bbox point
-      | MultiPoint mp -> MultiPoint.to_json ?bbox mp
-      | LineString ls -> LineString.to_json ?bbox ls
-      | MultiLineString mls -> MultiLineString.to_json ?bbox mls
-      | Polygon p -> Polygon.to_json ?bbox p
-      | MultiPolygon mp -> MultiPolygon.to_json ?bbox mp
+    let rec to_json ?bbox ?foreign_members = function
+      | Point point -> Point.to_json ?bbox ?foreign_members point
+      | MultiPoint mp -> MultiPoint.to_json ?bbox ?foreign_members mp
+      | LineString ls -> LineString.to_json ?bbox ?foreign_members ls
+      | MultiLineString mls ->
+          MultiLineString.to_json ?bbox ?foreign_members mls
+      | Polygon p -> Polygon.to_json ?bbox ?foreign_members p
+      | MultiPolygon mp -> MultiPolygon.to_json ?bbox ?foreign_members mp
       | Collection c ->
           J.obj
             ([
@@ -316,7 +314,7 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json ?bbox (t, props) =
+    let to_json ?bbox ?foreign_members (t, props) =
       J.obj
         ([
            ("type", J.string "Feature");
@@ -325,13 +323,13 @@ module Make (J : Intf.Json) = struct
          ]
         @ bbox_to_json_or_empty bbox)
 
-    let to_json ?foreign_members t =
+    (*let to_json ?foreign_members t =
       J.obj
         ([
            ("type", J.string "Feature");
            ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
          ]
-        @ foreign_members_or_empty foreign_members)
+        @ foreign_members_or_empty foreign_members) *)
 
     module Collection = struct
       type feature = t
@@ -368,7 +366,7 @@ module Make (J : Intf.Json) = struct
                 "A Geojson feature collection requires the type \
                  `FeatureCollection`. No type was found.")
 
-      let to_json ?bbox t =
+      let to_json ?bbox ?foreign_members t =
         J.obj
           ([
              ("type", J.string "FeatureCollection");
@@ -383,12 +381,18 @@ module Make (J : Intf.Json) = struct
     | FeatureCollection of Feature.Collection.t
     | Geometry of Geometry.t
 
-  and t = { geojson : geojson; bbox : float array option }
+  and t = {
+    geojson : geojson;
+    bbox : float array option;
+    foreign_members : (string * json) list option;
+  }
 
   let geojson t = t.geojson
   let bbox t = t.bbox
-  let v ?bbox geojson = { geojson; bbox }
-  let geojson_to_t gjson bbox = { geojson = gjson; bbox }
+  let v ?bbox ?foreign_members geojson = { geojson; bbox; foreign_members }
+
+  let geojson_to_t gjson bbox foreign_members =
+    { geojson = gjson; bbox; foreign_members }
 
   let json_to_bbox json =
     match J.to_array (decode_or_err J.to_float) json with
@@ -425,11 +429,12 @@ module Make (J : Intf.Json) = struct
             "A Geojson text should contain one object with a member `type`.")
 
   let to_json = function
-    | Feature f -> Feature.to_json ?foreign_members f
-    | { geojson = Feature f; bbox } -> Feature.to_json ?bbox f
-    | { geojson = FeatureCollection fc; bbox } ->
-        Feature.Collection.to_json ?bbox fc
-    | { geojson = Geometry g; bbox } -> Geometry.to_json ?bbox g
+    | { geojson = Feature f; bbox; foreign_members } ->
+        Feature.to_json ?bbox ?foreign_members f
+    | { geojson = FeatureCollection fc; bbox; foreign_members } ->
+        Feature.Collection.to_json ?bbox ?foreign_members fc
+    | { geojson = Geometry g; bbox; foreign_members } ->
+        Geometry.to_json ?bbox ?foreign_members g
 
   module Random = struct
     type geometry =
@@ -448,9 +453,23 @@ module Make (J : Intf.Json) = struct
       let rec aux_random = function
         | FC fs ->
             let features = List.map random_f fs in
-            { geojson = FeatureCollection features; bbox = None }
-        | F f -> { geojson = Feature (random_f f); bbox = None }
-        | G g -> { geojson = Geometry (random_g g); bbox = None }
+            {
+              geojson = FeatureCollection features;
+              bbox = None;
+              foreign_members = None;
+            }
+        | F f ->
+            {
+              geojson = Feature (random_f f);
+              bbox = None;
+              foreign_members = None;
+            }
+        | G g ->
+            {
+              geojson = Geometry (random_g g);
+              bbox = None;
+              foreign_members = None;
+            }
       and random_f { properties; geometry } =
         let geo = random_g geometry in
         (Some geo, properties)
