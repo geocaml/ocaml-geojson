@@ -294,19 +294,27 @@ module Make (J : Intf.Json) = struct
     let geometry = fst
     let properties = snd
 
+    let keys_in_use = [ "type"; "geometry"; "properties"; "id" ]
+
+    let foreign_members json = 
+      match J.to_obj json with
+        | Ok assoc -> List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+        | Error _ -> []
+
     let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
           | Ok "Feature" -> (
+              let fm = foreign_members json in
               match
                 (J.find json [ "geometry" ], J.find json [ "properties" ])
               with
               | Some geometry, props ->
                   Result.map
-                    (fun v -> (Option.some v, props))
+                    (fun v -> (Option.some v, props, fm))
                     (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+              | None, props -> Ok (None, props, fm))
           | Ok s ->
               Error
                 (`Msg
@@ -406,20 +414,17 @@ module Make (J : Intf.Json) = struct
   let of_json json =
     match
       ( J.find json [ "type" ],
-        J.find json [ "bbox" ],
-        J.find json [ "foreign_members" ] )
+        J.find json [ "bbox" ])
     with
-    | Some typ, bbx, frgn -> (
+    | Some typ, bbx -> (
         match J.to_string typ with
         | Ok "Feature" -> (
             match
-              Result.map (fun v -> Feature v) @@ Feature.base_of_json json
+              Result.map (fun (g, p, fm) -> (Feature (g, p), fm)) @@ Feature.base_of_json json
             with
-            | Ok v ->
+            | Ok (v, fm) ->
                 Ok
-                  (geojson_to_t v ?bbox ?foreign_members
-                  @@ Option.bind bbx json_to_bbox
-                  @@ Option.bind frgn json_to_foreign_members)
+                  (geojson_to_t v (Option.bind bbx json_to_bbox) (Option.bind frgn json_to_foreign_members))
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
             match
@@ -443,7 +448,7 @@ module Make (J : Intf.Json) = struct
                   @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Error _ as e -> e)
-    | None, _, _ ->
+    | None, _ ->
         Error
           (`Msg
             "A Geojson text should contain one object with a member `type`.")
