@@ -426,13 +426,21 @@ module Make (J : Intf.Json) = struct
               Result.map (fun v -> FeatureCollection v)
               @@ Feature.Collection.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox @@ Option.bind frgn json_to_foreign_members)
+            | Ok v ->
+                Ok
+                  (geojson_to_t v
+                  @@ Option.bind bbx json_to_bbox
+                  @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
             match
               Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox @@ Option.bind frgn json_to_foreign_members)
+            | Ok v ->
+                Ok
+                  (geojson_to_t v
+                  @@ Option.bind bbx json_to_bbox
+                  @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Error _ as e -> e)
     | None, _, _ ->
