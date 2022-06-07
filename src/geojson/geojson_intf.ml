@@ -237,8 +237,7 @@ module type S = sig
   val bbox : t -> float array option
   (** [bbox t] will extract bbox value from t (a GeoJSON object) *)
 
-  val v :
-    ?bbox:float array -> ?foreign_members:(string * json) list -> geojson -> t
+  val v : ?bbox:float array -> geojson -> t
   (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
       type {!t}) *)
 
@@ -246,8 +245,7 @@ module type S = sig
   (** [foreign_members t] will extract name/value pair of a foreign member from
       t (a GeoJSON object) *)
 
-  val of_json :
-    json -> ((string * json) list option -> t, [ `Msg of string ]) result
+  val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an
       error. *)
 

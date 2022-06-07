@@ -400,31 +400,42 @@ module Make (J : Intf.Json) = struct
     | Ok v -> Some v
     | Error _ -> None
 
+  let json_to_foreign_members json =
+    match J.to_obj json with Ok v -> Some v | Error _ -> None
+
   let of_json json =
-    match (J.find json [ "type" ], J.find json [ "bbox" ]) with
-    | Some typ, bbx -> (
+    match
+      ( J.find json [ "type" ],
+        J.find json [ "bbox" ],
+        J.find json [ "foreign_members" ] )
+    with
+    | Some typ, bbx, frgn -> (
         match J.to_string typ with
         | Ok "Feature" -> (
             match
               Result.map (fun v -> Feature v) @@ Feature.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            | Ok v ->
+                Ok
+                  (geojson_to_t v ?bbox ?foreign_members
+                  @@ Option.bind bbx json_to_bbox
+                  @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
             match
               Result.map (fun v -> FeatureCollection v)
               @@ Feature.Collection.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
             match
               Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
             with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox @@ Option.bind frgn json_to_foreign_members)
             | Error e -> Error e)
         | Error _ as e -> e)
-    | None, _ ->
+    | None, _, _ ->
         Error
           (`Msg
             "A Geojson text should contain one object with a member `type`.")
