@@ -34,6 +34,14 @@ module Make (J : Intf.Json) = struct
   module Geometry = struct
     type json = J.t
 
+    let keys_in_use = [ "type"; "coordinates" ]
+
+    let foreign_members json =
+      match J.to_obj json with
+      | Ok assoc ->
+          List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+      | Error _ -> []
+
     module Position = struct
       (* We use a float array internally for performance *)
       type t = float array
@@ -236,28 +244,32 @@ module Make (J : Intf.Json) = struct
       | Collection of t list
 
     let rec base_of_json json =
+      let fm = foreign_members in
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
           | Ok "Point" ->
-              Result.map (fun v -> Point v) @@ Point.base_of_json json
+              Result.map (fun v -> (Point v, fm)) @@ Point.base_of_json json
           | Ok "MultiPoint" ->
-              Result.map (fun v -> MultiPoint v) @@ MultiPoint.base_of_json json
+              Result.map (fun v -> (MultiPoint v, fm))
+              @@ MultiPoint.base_of_json json
           | Ok "LineString" ->
-              Result.map (fun v -> LineString v) @@ LineString.base_of_json json
+              Result.map (fun v -> (LineString v, fm))
+              @@ LineString.base_of_json json
           | Ok "MultiLineString" ->
-              Result.map (fun v -> MultiLineString v)
+              Result.map (fun v -> (MultiLineString v, fm))
               @@ MultiLineString.base_of_json json
           | Ok "Polygon" ->
-              Result.map (fun v -> Polygon v) @@ Polygon.base_of_json json
+              Result.map (fun v -> (Polygon v, fm)) @@ Polygon.base_of_json json
           | Ok "MultiPolygon" ->
-              Result.map (fun v -> MultiPolygon v)
+              Result.map (fun v -> (MultiPolygon v, fm))
               @@ MultiPolygon.base_of_json json
           | Ok "GeometryCollection" -> (
               match J.find json [ "geometries" ] with
               | Some list ->
+                  let fm = foreign_members in
                   let geo = J.to_list (decode_or_err base_of_json) list in
-                  Result.map (fun v -> Collection v) geo
+                  Result.map (fun v -> (Collection v, fm)) geo
               | None ->
                   Error
                     (`Msg
@@ -293,20 +305,28 @@ module Make (J : Intf.Json) = struct
     let v ?properties geo = (Some geo, properties)
     let geometry = fst
     let properties = snd
+    let keys_in_use = [ "type"; "geometry"; "properties"; "id" ]
+
+    let foreign_members json =
+      match J.to_obj json with
+      | Ok assoc ->
+          List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+      | Error _ -> []
 
     let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
           | Ok "Feature" -> (
+              let fm = foreign_members json in
               match
                 (J.find json [ "geometry" ], J.find json [ "properties" ])
               with
               | Some geometry, props ->
                   Result.map
-                    (fun v -> (Option.some v, props))
+                    (fun v -> (Option.some v, props, fm))
                     (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+              | None, props -> Ok (None, props, fm))
           | Ok s ->
               Error
                 (`Msg
@@ -336,12 +356,20 @@ module Make (J : Intf.Json) = struct
 
       let features = Fun.id
       let v = Fun.id
+      let keys_in_use = [ "type"; "features"; "geometry"; "properties"; "id" ]
+
+      let foreign_members json =
+        match J.to_obj json with
+        | Ok assoc ->
+            List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+        | Error _ -> []
 
       let base_of_json json =
         match J.find json [ "type" ] with
         | Some typ -> (
             match J.to_string typ with
             | Ok "FeatureCollection" -> (
+                let fm = foreign_members json in
                 match J.find json [ "features" ] with
                 | Some features ->
                     J.to_list
@@ -404,46 +432,32 @@ module Make (J : Intf.Json) = struct
     match J.to_obj json with Ok v -> Some v | Error _ -> None
 
   let of_json json =
-    match
-      ( J.find json [ "type" ],
-        J.find json [ "bbox" ],
-        J.find json [ "foreign_members" ] )
-    with
-    | Some typ, bbx, frgn -> (
+    match (J.find json [ "type" ], J.find json [ "bbox" ]) with
+    | Some typ, bbx -> (
         match J.to_string typ with
         | Ok "Feature" -> (
             match
-              Result.map (fun v -> Feature v) @@ Feature.base_of_json json
+              Result.map (fun (g, p, fm) -> (Feature (g, p), fm))
+              @@ Feature.base_of_json json
             with
-            | Ok v ->
-                Ok
-                  (geojson_to_t v ?bbox ?foreign_members
-                  @@ Option.bind bbx json_to_bbox
-                  @@ Option.bind frgn json_to_foreign_members)
+            | Ok (v, fm) -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
             match
-              Result.map (fun v -> FeatureCollection v)
+              Result.map (fun (f, fm) -> (FeatureCollection v, fm))
               @@ Feature.Collection.base_of_json json
             with
-            | Ok v ->
-                Ok
-                  (geojson_to_t v
-                  @@ Option.bind bbx json_to_bbox
-                  @@ Option.bind frgn json_to_foreign_members)
+            | Ok (v, fm) -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
             match
-              Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
+              Result.map (fun v -> (Geometry v, fm))
+              @@ Geometry.base_of_json json
             with
-            | Ok v ->
-                Ok
-                  (geojson_to_t v
-                  @@ Option.bind bbx json_to_bbox
-                  @@ Option.bind frgn json_to_foreign_members)
+            | Ok (v, fm) -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Error _ as e -> e)
-    | None, _, _ ->
+    | None, _ ->
         Error
           (`Msg
             "A Geojson text should contain one object with a member `type`.")
