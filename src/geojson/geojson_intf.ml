@@ -179,7 +179,7 @@ module type Geometry = sig
     (** Create a multi-polygon object from an array of {!Polygon.t}s *)
   end
 
-  type t =
+  type geometry =
     | Point of Point.t
     | MultiPoint of MultiPoint.t
     | LineString of LineString.t
@@ -187,6 +187,12 @@ module type Geometry = sig
     | Polygon of Polygon.t
     | MultiPolygon of MultiPolygon.t
     | Collection of t list
+
+  and t = geometry * (string * json) list
+
+  val foreign_members : t -> (string * json) list
+  (** [foreign_members t] will extract name/value pair of a foreign member from
+      t (a GeoJSON object) *)
 
   include Json_conv with type t := t and type json := json
 end
@@ -205,9 +211,17 @@ module type S = sig
     val geometry : t -> Geometry.t option
     val properties : t -> json option
 
+    val foreign_members : t -> (string * json) list
+    (** [foreign_members t] will extract name/value pair of a foreign member
+        from t (a GeoJSON object) *)
+
     include Json_conv with type t := t and type json := json
 
-    val v : ?properties:json -> Geometry.t -> t
+    val v :
+      ?properties:json ->
+      ?foreign_members:(string * json) list ->
+      Geometry.t ->
+      t
     (** [v geo] creates a new feature object, you may wish to provide a
         [properties] JSON object for the feature too. *)
 
@@ -217,8 +231,12 @@ module type S = sig
 
       val features : t -> feature list
 
-      val v : feature list -> t
+      val v : ?foreign_members:(string * json) list -> feature list -> t
       (** [v features] creates a feature collection from a list of features *)
+
+      val foreign_members : t -> (string * json) list
+      (** [foreign_members t] will extract name/value pair of a foreign member
+          from t (a GeoJSON object) *)
 
       include Json_conv with type t := t and type json := json
     end
@@ -240,10 +258,6 @@ module type S = sig
   val v : ?bbox:float array -> geojson -> t
   (** [v geojson bbox] combines geojson and bbox to return a GeoJSON object (a
       type {!t}) *)
-
-  val foreign_members : t -> (string * json) list option
-  (** [foreign_members t] will extract name/value pair of a foreign member from
-      t (a GeoJSON object) *)
 
   val of_json : json -> (t, [ `Msg of string ]) result
   (** [of_json json] converts the JSON to a GeoJSON object (a type {!t}) or an

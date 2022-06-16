@@ -67,7 +67,7 @@ let test_multi_line () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiLineString m) -> (g, m)
+        | Geometry (MultiLineString m, []) -> (g, m)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -98,7 +98,7 @@ let test_multi_point () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiPoint p) -> (g, p)
+        | Geometry (MultiPoint p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -123,7 +123,7 @@ let test_point () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (Point p) -> (g, p)
+        | Geometry (Point p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -143,7 +143,7 @@ let test_linestring () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (LineString p) -> (g, p)
+        | Geometry (LineString p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -168,7 +168,7 @@ let test_polygon () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (Polygon p) -> (g, p)
+        | Geometry (Polygon p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -204,7 +204,7 @@ let test_multi_polygon () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiPolygon mp) -> (g, mp)
+        | Geometry (MultiPolygon mp, []) -> (g, mp)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -266,7 +266,7 @@ let test_feature () =
         match Geojson.geojson v with
         | Feature t -> (
             match Geojson.Feature.geometry t with
-            | Some (MultiPoint p) -> (v, p)
+            | Some (MultiPoint p, []) -> (v, p)
             | _ -> assert false)
         | _ -> assert false)
     | _ -> assert false
@@ -306,7 +306,7 @@ let test_feature_collection () =
         match Geojson.Feature.Collection.features fc with
         | [ x; y ] -> (
             match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
-            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | Some (MultiPoint a, []), Some (MultiLineString b, []) -> (a, b)
             | _, _ -> assert false)
         | _ -> assert false)
     | _ -> assert false
@@ -378,7 +378,7 @@ let test_3d_feature_collection () =
         match Geojson.Feature.Collection.features fc with
         | [ x; y ] -> (
             match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
-            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | Some (MultiPoint a, []), Some (MultiLineString b, []) -> (a, b)
             | _, _ -> assert false)
         | _ -> assert false)
     | _ -> assert false
