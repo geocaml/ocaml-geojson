@@ -288,7 +288,7 @@ let test_feature () =
     "same point"
     [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
     t;
-  Alcotest.(check (list string)) "Some Islands" json fm;  
+  Alcotest.(check (list string)) "Some Islands" json fm;
   Alcotest.(check ezjsonm) "same json" prop_from_file property;
   Alcotest.(check ezjsonm) "same json" json json'
 
