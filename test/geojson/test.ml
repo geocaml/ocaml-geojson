@@ -260,6 +260,11 @@ let test_feature () =
     Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json"
   in
   let property = match _get_all_props s with [ x ] -> x | _ -> assert false in
+  let fm =
+    match Geojson.Feature.foreign_members s with
+    | [ x ] -> x
+    | _ -> assert false
+  in
   let f, coord =
     match feature with
     | Ok v -> (
@@ -271,6 +276,7 @@ let test_feature () =
         | _ -> assert false)
     | _ -> assert false
   in
+
   let json' = Geojson.to_json f in
   let t =
     Geojson.Geometry.(
@@ -282,6 +288,7 @@ let test_feature () =
     "same point"
     [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
     t;
+  Alcotest.(check (list string)) "Some Islands" json fm;  
   Alcotest.(check ezjsonm) "same json" prop_from_file property;
   Alcotest.(check ezjsonm) "same json" json json'
 
