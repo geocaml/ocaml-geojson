@@ -31,7 +31,7 @@ module Make (J : Intf.Json) = struct
   module Geometry = struct
     type json = J.t
 
-    let keys_in_use = [ "type"; "coordinates" ]
+    let keys_in_use = [ "type"; "coordinates"; "bbox" ]
 
     let foreign_members json =
       match J.to_obj json with
@@ -316,7 +316,7 @@ module Make (J : Intf.Json) = struct
 
     let geometry t = t.geometry
     let properties t = t.properties
-    let keys_in_use = [ "type"; "geometry"; "properties"; "id" ]
+    let keys_in_use = [ "type"; "geometry"; "properties"; "id"; "bbox" ]
 
     let foreign_members json =
       match J.to_obj json with
@@ -380,7 +380,9 @@ module Make (J : Intf.Json) = struct
 
       let features t = t.features
       let v ?(foreign_members = []) features = { features; foreign_members }
-      let keys_in_use = [ "type"; "features"; "geometry"; "properties"; "id" ]
+
+      let keys_in_use =
+        [ "type"; "features"; "geometry"; "properties"; "id"; "bbox" ]
 
       let foreign_members json =
         match J.to_obj json with
