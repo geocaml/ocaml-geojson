@@ -283,7 +283,7 @@ let test_feature () =
     "same point"
     [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
     t;
-  Alcotest.(check (list (string, string)))
+  Alcotest.(check (list (pair string ezjsonm)))
     "same string"
     [ ("title", `String "Some Islands") ]
     foreign_members;
