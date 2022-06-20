@@ -67,7 +67,7 @@ let test_multi_line () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiLineString m) -> (g, m)
+        | Geometry (MultiLineString m, []) -> (g, m)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -98,7 +98,7 @@ let test_multi_point () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiPoint p) -> (g, p)
+        | Geometry (MultiPoint p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -123,7 +123,7 @@ let test_point () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (Point p) -> (g, p)
+        | Geometry (Point p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -143,7 +143,7 @@ let test_linestring () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (LineString p) -> (g, p)
+        | Geometry (LineString p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -168,7 +168,7 @@ let test_polygon () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (Polygon p) -> (g, p)
+        | Geometry (Polygon p, []) -> (g, p)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -204,7 +204,7 @@ let test_multi_polygon () =
     match geo with
     | Ok g -> (
         match Geojson.geojson g with
-        | Geometry (MultiPolygon mp) -> (g, mp)
+        | Geometry (MultiPolygon mp, []) -> (g, mp)
         | _ -> assert false)
     | _ -> assert false
   in
@@ -260,28 +260,33 @@ let test_feature () =
     Ezjsonm.value_from_string @@ read_file "files/valid/prop1.json"
   in
   let property = match _get_all_props s with [ x ] -> x | _ -> assert false in
-  let f, coord =
+  let f, coord, foreign_members =
     match feature with
     | Ok v -> (
         match Geojson.geojson v with
         | Feature t -> (
+            let foreign_members = Geojson.Feature.foreign_members t in
             match Geojson.Feature.geometry t with
-            | Some (MultiPoint p) -> (v, p)
+            | Some (MultiPoint p, []) -> (v, p, foreign_members)
             | _ -> assert false)
         | _ -> assert false)
     | _ -> assert false
   in
+
   let json' = Geojson.to_json f in
   let t =
     Geojson.Geometry.(
       Array.map (fun l -> [| Position.long l; Position.lat l |])
       @@ MultiPoint.coordinates coord)
   in
-
   Alcotest.(check (array @@ array (float 0.)))
     "same point"
     [| [| 125.1; 40.0 |]; [| 155.9; 22.5 |] |]
     t;
+  Alcotest.(check (list (pair string ezjsonm)))
+    "same string"
+    [ ("title", `String "Some Islands") ]
+    foreign_members;
   Alcotest.(check ezjsonm) "same json" prop_from_file property;
   Alcotest.(check ezjsonm) "same json" json json'
 
@@ -306,7 +311,7 @@ let test_feature_collection () =
         match Geojson.Feature.Collection.features fc with
         | [ x; y ] -> (
             match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
-            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | Some (MultiPoint a, []), Some (MultiLineString b, []) -> (a, b)
             | _, _ -> assert false)
         | _ -> assert false)
     | _ -> assert false
@@ -378,7 +383,7 @@ let test_3d_feature_collection () =
         match Geojson.Feature.Collection.features fc with
         | [ x; y ] -> (
             match (Geojson.Feature.geometry x, Geojson.Feature.geometry y) with
-            | Some (MultiPoint a), Some (MultiLineString b) -> (a, b)
+            | Some (MultiPoint a, []), Some (MultiLineString b, []) -> (a, b)
             | _, _ -> assert false)
         | _ -> assert false)
     | _ -> assert false

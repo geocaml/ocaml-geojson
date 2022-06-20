@@ -31,6 +31,14 @@ module Make (J : Intf.Json) = struct
   module Geometry = struct
     type json = J.t
 
+    let keys_in_use = [ "type"; "coordinates"; "bbox" ]
+
+    let foreign_members json =
+      match J.to_obj json with
+      | Ok assoc ->
+          List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+      | Error _ -> []
+
     module Position = struct
       (* We use a float array internally for performance *)
       type t = float array
@@ -84,12 +92,13 @@ module Make (J : Intf.Json) = struct
       let parse_coords coords = J.to_array (decode_or_err J.to_float) coords
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox position =
+      let to_json ?bbox ?(foreign_members = []) position =
         J.obj
           ([
              ("type", J.string typ); ("coordinates", Position.to_json position);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
     module MultiPoint = struct
@@ -105,13 +114,14 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?(foreign_members = []) positions =
         J.obj
           ([
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
     module LineString = struct
@@ -131,13 +141,14 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?(foreign_members = []) positions =
         J.obj
           ([
              ("type", J.string typ);
              ("coordinates", J.array Position.to_json positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
     module MultiLineString = struct
@@ -153,13 +164,14 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?(foreign_members = []) positions =
         J.obj
           ([
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
     module Polygon = struct
@@ -185,13 +197,14 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?(foreign_members = []) positions =
         J.obj
           ([
              ("type", J.string typ);
              ("coordinates", J.array (J.array (J.array J.float)) positions);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
     module MultiPolygon = struct
@@ -207,17 +220,18 @@ module Make (J : Intf.Json) = struct
 
       let base_of_json json = parse_by_type json parse_coords typ
 
-      let to_json ?bbox positions =
+      let to_json ?bbox ?(foreign_members = []) positions =
         J.obj
           ([
              ("type", J.string typ);
              ( "coordinates",
                J.array (J.array (J.array (J.array J.float))) positions );
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
     end
 
-    type t =
+    type geometry =
       | Point of Point.t
       | MultiPoint of MultiPoint.t
       | LineString of LineString.t
@@ -226,29 +240,34 @@ module Make (J : Intf.Json) = struct
       | MultiPolygon of MultiPolygon.t
       | Collection of t list
 
+    and t = geometry * (string * json) list
+
     let rec base_of_json json =
+      let fm = foreign_members json in
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
           | Ok "Point" ->
-              Result.map (fun v -> Point v) @@ Point.base_of_json json
+              Result.map (fun v -> (Point v, fm)) @@ Point.base_of_json json
           | Ok "MultiPoint" ->
-              Result.map (fun v -> MultiPoint v) @@ MultiPoint.base_of_json json
+              Result.map (fun v -> (MultiPoint v, fm))
+              @@ MultiPoint.base_of_json json
           | Ok "LineString" ->
-              Result.map (fun v -> LineString v) @@ LineString.base_of_json json
+              Result.map (fun v -> (LineString v, fm))
+              @@ LineString.base_of_json json
           | Ok "MultiLineString" ->
-              Result.map (fun v -> MultiLineString v)
+              Result.map (fun v -> (MultiLineString v, fm))
               @@ MultiLineString.base_of_json json
           | Ok "Polygon" ->
-              Result.map (fun v -> Polygon v) @@ Polygon.base_of_json json
+              Result.map (fun v -> (Polygon v, fm)) @@ Polygon.base_of_json json
           | Ok "MultiPolygon" ->
-              Result.map (fun v -> MultiPolygon v)
+              Result.map (fun v -> (MultiPolygon v, fm))
               @@ MultiPolygon.base_of_json json
           | Ok "GeometryCollection" -> (
               match J.find json [ "geometries" ] with
               | Some list ->
                   let geo = J.to_list (decode_or_err base_of_json) list in
-                  Result.map (fun v -> Collection v) geo
+                  Result.map (fun v -> (Collection v, fm)) geo
               | None ->
                   Error
                     (`Msg
@@ -262,41 +281,69 @@ module Make (J : Intf.Json) = struct
               "A Geojson text should contain one object with a member `type`.")
 
     let rec to_json ?bbox = function
-      | Point point -> Point.to_json ?bbox point
-      | MultiPoint mp -> MultiPoint.to_json ?bbox mp
-      | LineString ls -> LineString.to_json ?bbox ls
-      | MultiLineString mls -> MultiLineString.to_json ?bbox mls
-      | Polygon p -> Polygon.to_json ?bbox p
-      | MultiPolygon mp -> MultiPolygon.to_json ?bbox mp
-      | Collection c ->
+      | Point point, foreign_members ->
+          Point.to_json ?bbox ~foreign_members point
+      | MultiPoint mp, foreign_members ->
+          MultiPoint.to_json ?bbox ~foreign_members mp
+      | LineString ls, foreign_members ->
+          LineString.to_json ?bbox ~foreign_members ls
+      | MultiLineString mls, foreign_members ->
+          MultiLineString.to_json ?bbox ~foreign_members mls
+      | Polygon p, foreign_members -> Polygon.to_json ?bbox ~foreign_members p
+      | MultiPolygon mp, foreign_members ->
+          MultiPolygon.to_json ?bbox ~foreign_members mp
+      | Collection c, foreign_members ->
           J.obj
             ([
                ("type", J.string "GeometryCollection");
                ("geometries", J.list to_json c);
              ]
-            @ bbox_to_json_or_empty bbox)
+            @ bbox_to_json_or_empty bbox
+            @ foreign_members)
+
+    let foreign_members (_, fm) = fm
   end
 
   module Feature = struct
-    type t = Geometry.t option * json option
+    type t = {
+      geometry : Geometry.t option;
+      properties : json option;
+      foreign_members : (string * json) list;
+    }
 
-    let v ?properties geo = (Some geo, properties)
-    let geometry = fst
-    let properties = snd
+    let v ?properties ?(foreign_members = []) geo =
+      { geometry = Some geo; properties; foreign_members }
+
+    let geometry t = t.geometry
+    let properties t = t.properties
+    let keys_in_use = [ "type"; "geometry"; "properties"; "id"; "bbox" ]
+
+    let foreign_members json =
+      match J.to_obj json with
+      | Ok assoc ->
+          List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+      | Error _ -> []
 
     let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
           match J.to_string typ with
           | Ok "Feature" -> (
+              let fm = foreign_members json in
               match
                 (J.find json [ "geometry" ], J.find json [ "properties" ])
               with
-              | Some geometry, props ->
+              | Some geometry, properties ->
                   Result.map
-                    (fun v -> (Option.some v, props))
+                    (fun v ->
+                      {
+                        geometry = Option.some v;
+                        properties;
+                        foreign_members = fm;
+                      })
                     (Geometry.base_of_json geometry)
-              | None, props -> Ok (None, props))
+              | None, properties ->
+                  Ok { geometry = None; properties; foreign_members = fm })
           | Ok s ->
               Error
                 (`Msg
@@ -310,31 +357,54 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json ?bbox (t, props) =
+    let to_json ?bbox { geometry; properties; foreign_members } =
       J.obj
         ([
            ("type", J.string "Feature");
-           ("geometry", Option.(value ~default:J.null @@ map Geometry.to_json t));
-           ("properties", Option.(value ~default:J.null props));
+           ( "geometry",
+             Option.(value ~default:J.null @@ map Geometry.to_json geometry) );
+           ("properties", Option.(value ~default:J.null properties));
          ]
-        @ bbox_to_json_or_empty bbox)
+        @ bbox_to_json_or_empty bbox
+        @ foreign_members)
+
+    let foreign_members t = t.foreign_members
 
     module Collection = struct
       type feature = t
-      type nonrec t = feature list
 
-      let features = Fun.id
-      let v = Fun.id
+      type nonrec t = {
+        features : feature list;
+        foreign_members : (string * json) list;
+      }
+
+      let features t = t.features
+      let v ?(foreign_members = []) features = { features; foreign_members }
+
+      let keys_in_use =
+        [ "type"; "features"; "geometry"; "properties"; "id"; "bbox" ]
+
+      let foreign_members json =
+        match J.to_obj json with
+        | Ok assoc ->
+            List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
+        | Error _ -> []
 
       let base_of_json json =
         match J.find json [ "type" ] with
         | Some typ -> (
             match J.to_string typ with
             | Ok "FeatureCollection" -> (
+                let fm = foreign_members json in
                 match J.find json [ "features" ] with
                 | Some features ->
-                    J.to_list
-                      (fun geometry -> decode_or_err base_of_json geometry)
+                    let features =
+                      J.to_list
+                        (fun geometry -> decode_or_err base_of_json geometry)
+                        features
+                    in
+                    Result.map
+                      (fun v -> { features = v; foreign_members = fm })
                       features
                 | None ->
                     Error
@@ -354,13 +424,16 @@ module Make (J : Intf.Json) = struct
                 "A Geojson feature collection requires the type \
                  `FeatureCollection`. No type was found.")
 
-      let to_json ?bbox t =
+      let to_json ?bbox { features; foreign_members } =
         J.obj
           ([
              ("type", J.string "FeatureCollection");
-             ("features", J.list to_json t);
+             ("features", J.list to_json features);
            ]
-          @ bbox_to_json_or_empty bbox)
+          @ bbox_to_json_or_empty bbox
+          @ foreign_members)
+
+      let foreign_members t = t.foreign_members
     end
   end
 
@@ -386,23 +459,21 @@ module Make (J : Intf.Json) = struct
     | Some typ, bbx -> (
         match J.to_string typ with
         | Ok "Feature" -> (
-            match
-              Result.map (fun v -> Feature v) @@ Feature.base_of_json json
-            with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            match Feature.base_of_json json with
+            | Ok v ->
+                Ok (geojson_to_t (Feature v) @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok "FeatureCollection" -> (
-            match
-              Result.map (fun v -> FeatureCollection v)
-              @@ Feature.Collection.base_of_json json
-            with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            match Feature.Collection.base_of_json json with
+            | Ok v ->
+                Ok
+                  (geojson_to_t (FeatureCollection v)
+                  @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Ok _maybe_geometry -> (
-            match
-              Result.map (fun v -> Geometry v) @@ Geometry.base_of_json json
-            with
-            | Ok v -> Ok (geojson_to_t v @@ Option.bind bbx json_to_bbox)
+            match Geometry.base_of_json json with
+            | Ok v ->
+                Ok (geojson_to_t (Geometry v) @@ Option.bind bbx json_to_bbox)
             | Error e -> Error e)
         | Error _ as e -> e)
     | None, _ ->
@@ -433,28 +504,33 @@ module Make (J : Intf.Json) = struct
       let rec aux_random = function
         | FC fs ->
             let features = List.map random_f fs in
-            { geojson = FeatureCollection features; bbox = None }
+            {
+              geojson = FeatureCollection { features; foreign_members = [] };
+              bbox = None;
+            }
         | F f -> { geojson = Feature (random_f f); bbox = None }
         | G g -> { geojson = Geometry (random_g g); bbox = None }
       and random_f { properties; geometry } =
         let geo = random_g geometry in
-        (Some geo, properties)
+        { geometry = Some geo; properties; foreign_members = [] }
       and random_g = function
-        | Point -> Geometry.Point (random_point ())
+        | Point -> (Geometry.Point (random_point ()), [])
         | MultiPoint i ->
-            Geometry.MultiPoint (Array.init i (fun _ -> random_point ()))
+            (Geometry.MultiPoint (Array.init i (fun _ -> random_point ())), [])
         | LineString i ->
-            Geometry.LineString (Array.init i (fun _ -> random_point ()))
+            (Geometry.LineString (Array.init i (fun _ -> random_point ())), [])
         | MultiLineString (i, j) ->
-            Geometry.MultiLineString
-              (Array.init i @@ fun _ -> Array.init j (fun _ -> random_point ()))
-        | Polygon i -> Geometry.Polygon (random_polygon i)
+            ( Geometry.MultiLineString
+                ( Array.init i @@ fun _ ->
+                  Array.init j (fun _ -> random_point ()) ),
+              [] )
+        | Polygon i -> (Geometry.Polygon (random_polygon i), [])
         | MultiPolygon (i, j) ->
             let arr = Array.init i (fun _ -> random_polygon j) in
-            Geometry.MultiPolygon arr
+            (Geometry.MultiPolygon arr, [])
         | Collection lst ->
             let lst = List.map random_g lst in
-            Geometry.Collection lst
+            (Geometry.Collection lst, [])
       and random_point () =
         Geometry.(Point.v (Position.v ~lat:(f ()) ~long:(f ()) ()))
       and random_polygon i =
