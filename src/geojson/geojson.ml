@@ -43,14 +43,14 @@ module Make (J : Intf.Json) = struct
       (* We use a float array internally for performance *)
       type t = float array
 
-      let long t = t.(0)
+      let lng t = t.(0)
       let lat t = t.(1)
       let altitude t = try Some t.(2) with _ -> None
 
-      let v ?altitude ~long ~lat () =
+      let v ?altitude ~lng ~lat () =
         match altitude with
-        | Some f -> [| long; lat; f |]
-        | None -> [| long; lat |]
+        | Some f -> [| lng; lat; f |]
+        | None -> [| lng; lat |]
 
       let equal l1 l2 =
         let n1 = Array.length l1 and n2 = Array.length l2 in
@@ -532,7 +532,7 @@ module Make (J : Intf.Json) = struct
             let lst = List.map random_g lst in
             (Geometry.Collection lst, [])
       and random_point () =
-        Geometry.(Point.v (Position.v ~lat:(f ()) ~long:(f ()) ()))
+        Geometry.(Point.v (Position.v ~lat:(f ()) ~lng:(f ()) ()))
       and random_polygon i =
         (* This geometry is not going to be very country like... *)
         let points = Array.init i (fun _ -> random_point ()) in

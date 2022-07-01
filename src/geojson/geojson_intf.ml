@@ -86,7 +86,7 @@ module type Geometry = sig
     type t
     (** A position - a longitude and latitude with an optional altitude *)
 
-    val long : t -> float
+    val lng : t -> float
     (** The longitude value of the position *)
 
     val lat : t -> float
@@ -98,7 +98,7 @@ module type Geometry = sig
     val equal : t -> t -> bool
     (** Whether two positions are equal by comparing each value *)
 
-    val v : ?altitude:float -> long:float -> lat:float -> unit -> t
+    val v : ?altitude:float -> lng:float -> lat:float -> unit -> t
     (** A position constructor *)
   end
 
