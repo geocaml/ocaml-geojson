@@ -11,7 +11,7 @@
 
 (authors "Patrick Ferris")
 
-(maintainers "pf341@patricoferris.com")
+(maintainers "patrick@sirref.org")
 
 (package
  (name geojson)

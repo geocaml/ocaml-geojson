@@ -4,7 +4,7 @@ synopsis: "OCaml library for Geojson"
 description: """
 Geojson is a 'schema' for JSON to describe geospatial information. 
   This library provides a functor for building a module for manipulating and parsing Geojson into OCaml."""
-maintainer: ["pf341@patricoferris.com"]
+maintainer: ["patrick@sirref.org"]
 authors: ["Patrick Ferris"]
 license: "MIT"
 homepage: "https://github.com/patricoferris/ocaml-geojson"
