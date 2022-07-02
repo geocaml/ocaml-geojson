@@ -76,7 +76,7 @@ let test_multi_line () =
   let t =
     Geojson.Geometry.(
       Array.map (fun v ->
-          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          Array.map (fun l -> [| Position.lng l; Position.lat l |])
           @@ LineString.coordinates v)
       @@ MultiLineString.lines coords)
   in
@@ -105,7 +105,7 @@ let test_multi_point () =
   let json' = Geojson.to_json geo in
   let t =
     Geojson.Geometry.(
-      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      Array.map (fun l -> [| Position.lng l; Position.lat l |])
       @@ MultiPoint.coordinates coords)
   in
 
@@ -130,7 +130,7 @@ let test_point () =
   let json' = Geojson.to_json geo in
   let open Geojson.Geometry in
   let pos = Point.position coords in
-  let p = [| Position.long pos; Position.lat pos |] in
+  let p = [| Position.lng pos; Position.lat pos |] in
 
   Alcotest.(check (array (float 0.))) "same point" [| 125.6; 10.1 |] p;
   Alcotest.(check ezjsonm) "same json" json json'
@@ -150,7 +150,7 @@ let test_linestring () =
   let json' = Geojson.to_json geo in
   let l =
     Geojson.Geometry.(
-      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      Array.map (fun l -> [| Position.lng l; Position.lat l |])
       @@ LineString.coordinates coords)
   in
 
@@ -177,7 +177,7 @@ let test_polygon () =
   let t =
     Geojson.Geometry.(
       Array.map (fun v ->
-          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          Array.map (fun l -> [| Position.lng l; Position.lat l |])
           @@ LineString.coordinates v)
       @@ Polygon.rings coords)
   in
@@ -214,7 +214,7 @@ let test_multi_polygon () =
     Geojson.Geometry.(
       Array.map (fun v ->
           Array.map (fun n ->
-              Array.map (fun l -> [| Position.long l; Position.lat l |])
+              Array.map (fun l -> [| Position.lng l; Position.lat l |])
               @@ LineString.coordinates n)
           @@ Polygon.rings v)
       @@ MultiPolygon.polygons coords)
@@ -276,7 +276,7 @@ let test_feature () =
   let json' = Geojson.to_json f in
   let t =
     Geojson.Geometry.(
-      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      Array.map (fun l -> [| Position.lng l; Position.lat l |])
       @@ MultiPoint.coordinates coord)
   in
   Alcotest.(check (array @@ array (float 0.)))
@@ -319,13 +319,13 @@ let test_feature_collection () =
   let json' = Geojson.to_json feature_collection in
   let mp =
     Geojson.Geometry.(
-      Array.map (fun l -> [| Position.long l; Position.lat l |])
+      Array.map (fun l -> [| Position.lng l; Position.lat l |])
       @@ MultiPoint.coordinates c1)
   in
   let ml =
     Geojson.Geometry.(
       Array.map (fun v ->
-          Array.map (fun l -> [| Position.long l; Position.lat l |])
+          Array.map (fun l -> [| Position.lng l; Position.lat l |])
           @@ LineString.coordinates v)
       @@ MultiLineString.lines c2)
   in
@@ -393,7 +393,7 @@ let test_3d_feature_collection () =
     Geojson.Geometry.(
       Array.map (fun l ->
           [|
-            Position.long l; Position.lat l; Option.get @@ Position.altitude l;
+            Position.lng l; Position.lat l; Option.get @@ Position.altitude l;
           |])
       @@ MultiPoint.coordinates c1)
   in
@@ -402,7 +402,7 @@ let test_3d_feature_collection () =
       Array.map (fun v ->
           Array.map (fun l ->
               [|
-                Position.long l;
+                Position.lng l;
                 Position.lat l;
                 Option.get @@ Position.altitude l;
               |])
