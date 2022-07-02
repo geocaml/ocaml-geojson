@@ -12,6 +12,7 @@ bug-reports: "https://github.com/patricoferris/ocaml-geojson/issues"
 depends: [
   "dune" {>= "2.9"}
   "brr" {with-test}
+  "bos" {with-test}
   "bechamel-notty" {>= "0.1.0" & with-test}
   "alcotest" {with-test}
   "ezjsonm" {with-test}
