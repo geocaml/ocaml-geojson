@@ -3,7 +3,7 @@ opam-version: "2.0"
 synopsis: "Streaming geojson library using jsonm"
 description:
   "A library for manipulating Geojson as a stream, useful because Geojson can be gigabytes in size."
-maintainer: ["pf341@patricoferris.com"]
+maintainer: ["patrick@sirref.org"]
 authors: ["Patrick Ferris"]
 license: "MIT"
 homepage: "https://github.com/patricoferris/ocaml-geojson"

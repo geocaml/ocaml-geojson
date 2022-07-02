@@ -10,9 +10,8 @@ let capitalise_nom obj =
 let remove_all_coords t =
   let open Geojsonm in
   match t with
-  | G.Geometry.Polygon _, fm ->
-      G.Geometry G.Geometry.(Polygon (Polygon.v [||]), fm)
-  | t -> G.Geometry t
+  | G.Geometry.Polygon _, fm -> G.Geometry.(Polygon (Polygon.v [||]), fm)
+  | t -> t
 
 let get_string_exn = function `String s -> s | _ -> failwith "err"
 

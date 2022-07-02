@@ -8,7 +8,6 @@
 (rule
  (alias default)
  (deps index.bc.js)
- (mode promote)
  (targets index.js)
  (action
   (copy %{deps} %{targets})))
