@@ -8,7 +8,7 @@ let capitalise_nom obj =
   match obj with `O assoc -> `O (capitalise_nom [] assoc) | x -> x
 
 let remove_all_coords t =
-  let open Geojsonm in
+  let open Geojsone in
   match t with
   | G.Geometry.Polygon _, fm -> G.Geometry.(Polygon (Polygon.v [||]), fm)
   | t -> t
@@ -45,24 +45,24 @@ let () =
   let print_or_fail = function
     | Ok () -> Format.printf "%s\n\n" @@ Buffer.contents dst
     | Error e ->
-        Geojsonm.Err.pp Format.err_formatter e;
+        Geojsone.Err.pp Format.err_formatter e;
         failwith "Internal err"
   in
   let cwd = Eio.Stdenv.cwd env in
   print_or_fail
     ( with_src cwd "./input/simple.geojson" @@ fun src ->
-      Geojsonm.map_props capitalise_nom src (buffer_to_dst dst) );
+      Geojsone.map_props capitalise_nom src (buffer_to_dst dst) );
   Buffer.clear dst;
   print_or_fail
     ( with_src cwd "./input/simple.geojson" @@ fun src ->
-      Geojsonm.map_geometry remove_all_coords src (buffer_to_dst dst) );
+      Geojsone.map_geometry remove_all_coords src (buffer_to_dst dst) );
   Buffer.clear dst;
   match
     with_src cwd "./input/simple.geojson" @@ fun src ->
-    Geojsonm.fold_props (fun acc p -> get_name p :: acc) [] src
+    Geojsone.fold_props (fun acc p -> get_name p :: acc) [] src
   with
   | Ok lst ->
       Format.printf "Places: %a" Format.(pp_print_list pp_print_string) lst
   | Error e ->
-      Geojsonm.Err.pp Format.err_formatter e;
+      Geojsone.Err.pp Format.err_formatter e;
       failwith "Internal err"

@@ -1,0 +1,4 @@
+(library
+ (name geojsone)
+ (public_name geojsonm.effects)
+ (libraries ezjsone geojson jsone))

@@ -1,5 +1,5 @@
 let print_geometry g =
-  print_endline @@ Ezjsone.value_to_string (Geojsonm.G.to_json g)
+  print_endline @@ Ezjsone.value_to_string (Geojsone.G.to_json g)
 
 let print_property prop = print_endline @@ Ezjsone.value_to_string prop
 
@@ -20,13 +20,13 @@ let () =
   let or_fail = function
     | Ok () -> ()
     | Error e ->
-        Geojsonm.Err.pp Format.err_formatter e;
+        Geojsone.Err.pp Format.err_formatter e;
         failwith "Internal err"
   in
   let cwd = Eio.Stdenv.cwd env in
   or_fail
     ( with_src cwd "./input/simple.geojson" @@ fun src ->
-      Geojsonm.iter_geometry print_geometry src );
+      Geojsone.iter_geometry print_geometry src );
   or_fail
     ( with_src cwd "./input/simple.geojson" @@ fun src ->
-      Geojsonm.iter_props print_property src )
+      Geojsone.iter_props print_property src )
