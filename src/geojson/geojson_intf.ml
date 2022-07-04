@@ -302,6 +302,9 @@ module type Geojson = sig
   module type S = S
   (** Types for Geojson texts and objects *)
 
+  module type Json = Json
+  (** Types for the JSON parser *)
+
   (** A functor that takes a Json parsing implementation and returns a GeoJson
       parser and constructor. *)
   module Make (J : Json) : S with type json = J.t

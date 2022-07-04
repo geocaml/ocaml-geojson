@@ -15,6 +15,7 @@
 module Intf = Geojson_intf
 
 module type S = Geojson_intf.S
+module type Json = Geojson_intf.Json
 
 let ( let* ) = Result.bind
 
