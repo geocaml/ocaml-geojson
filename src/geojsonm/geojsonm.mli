@@ -18,12 +18,12 @@
 
 module Err : sig
   type location = (int * int) * (int * int)
-  type t = [ `Error of location * Jsonm.error | `EOI | `Unexpected of string ]
+  type t = [ `Error of location * Jsone.error | `EOI | `Unexpected of string ]
 
   val pp : Format.formatter -> t -> unit
 end
 
-module G : Geojson.S with type json = Ezjsonm.value
+module G : Geojson.S with type json = Ezjsone.value
 
 (** {2 Maps}
 
@@ -33,8 +33,8 @@ module G : Geojson.S with type json = Ezjsonm.value
 
 val map_geometry :
   (G.Geometry.t -> G.Geometry.t) ->
-  Jsonm.src ->
-  Jsonm.dst ->
+  Jsone.src ->
+  Jsone.dst ->
   (unit, Err.t) result
 (** [map_geometry f src dst] will apply [f] to all GeoJson objects. This is
     essentially any
@@ -45,12 +45,12 @@ val map_geometry :
     have a single geometry object as your document, this will not work. *)
 
 val map_props :
-  (Ezjsonm.value -> Ezjsonm.value) ->
-  Jsonm.src ->
-  Jsonm.dst ->
+  (Ezjsone.value -> Ezjsone.value) ->
+  Jsone.src ->
+  Jsone.dst ->
   (unit, Err.t) result
 (** [map_props src dst ~f] will apply [f] to each feature's properties field.
-    The properties field is decoded into an {!Ezjsonm.value} for convenience. *)
+    The properties field is decoded into an {!Ezjsone.value} for convenience. *)
 
 (** {2 Folds}
 
@@ -72,12 +72,12 @@ val map_props :
     ]} *)
 
 val fold_geometry :
-  ('a -> G.Geometry.t -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
+  ('a -> G.Geometry.t -> 'a) -> 'a -> Jsone.src -> ('a, Err.t) result
 (** [fold_geometry f acc src] is much like {!map_geometry} but allows you to
     accumulate some result that is then returned to you. *)
 
 val fold_props :
-  ('a -> Ezjsonm.value -> 'a) -> 'a -> Jsonm.src -> ('a, Err.t) result
+  ('a -> Ezjsone.value -> 'a) -> 'a -> Jsone.src -> ('a, Err.t) result
 (** [fold_props f init src] *)
 
 (** {2 Iterators}
@@ -92,13 +92,13 @@ val fold_props :
 
     {[
       let print_geometry g =
-        print_endline @@ Ezjsonm.value_to_string (Geojsonm.G.Geometry.to_json g)
+        print_endline @@ Ezjsone.value_to_string (Geojsonm.G.Geometry.to_json g)
 
       let values src = Geojsonm.iter_geometry print_geometry src
     ]} *)
 
-val iter_geometry : (G.t -> unit) -> Jsonm.src -> (unit, Err.t) result
+val iter_geometry : (G.t -> unit) -> Jsone.src -> (unit, Err.t) result
 (** [iter_geometry f src] will apply [f] to all GeoJson objects. *)
 
-val iter_props : (Ezjsonm.value -> unit) -> Jsonm.src -> (unit, Err.t) result
+val iter_props : (Ezjsone.value -> unit) -> Jsone.src -> (unit, Err.t) result
 (** [iter_props f src] will apply [f] to each feature's properties field. *)

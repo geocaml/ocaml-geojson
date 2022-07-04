@@ -1,0 +1,4 @@
+(library
+ (name ezjsone)
+ (public_name geojson.ezjsone)
+ (libraries eio jsone hex uutfe sexplib0))

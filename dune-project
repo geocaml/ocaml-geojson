@@ -23,7 +23,7 @@
    (bos :with-test)
    (bechamel-notty (and (>= 0.1.0) :with-test))
    (alcotest :with-test)
-   (ezjsonm  :with-test)))
+   (ezjsone  :with-test)))
 
 (package
  (name geojsonm)
@@ -32,6 +32,6 @@
  (depends 
    (geojson (= :version))
    jsonm 
-   ezjsonm))
+   ezjsone))
 
 (using mdx 0.1)

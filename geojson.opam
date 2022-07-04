@@ -15,7 +15,7 @@ depends: [
   "bos" {with-test}
   "bechamel-notty" {>= "0.1.0" & with-test}
   "alcotest" {with-test}
-  "ezjsonm" {with-test}
+  "ezjsone" {with-test}
   "odoc" {with-doc}
 ]
 build: [

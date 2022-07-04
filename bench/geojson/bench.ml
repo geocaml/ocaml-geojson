@@ -1,39 +1,39 @@
 open Bechamel
 open Toolkit
 
-module Ezjsonm_parser = struct
-  type t = Ezjsonm.value
+module Ezjsone_parser = struct
+  type t = Ezjsone.value
 
   let catch_err f v =
-    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+    try Ok (f v) with Ezjsone.Parse_error (_, s) -> Error (`Msg s)
 
-  let find = Ezjsonm.find_opt
-  let to_string t = catch_err Ezjsonm.get_string t
-  let string = Ezjsonm.string
-  let to_float t = catch_err Ezjsonm.get_float t
-  let float = Ezjsonm.float
-  let to_int t = catch_err Ezjsonm.get_int t
-  let int = Ezjsonm.int
-  let to_list f t = catch_err (Ezjsonm.get_list f) t
-  let list f t = Ezjsonm.list f t
+  let find = Ezjsone.find_opt
+  let to_string t = catch_err Ezjsone.get_string t
+  let string = Ezjsone.string
+  let to_float t = catch_err Ezjsone.get_float t
+  let float = Ezjsone.float
+  let to_int t = catch_err Ezjsone.get_int t
+  let int = Ezjsone.int
+  let to_list f t = catch_err (Ezjsone.get_list f) t
+  let list f t = Ezjsone.list f t
   let to_array f t = Result.map Array.of_list @@ to_list f t
   let array f t = list f (Array.to_list t)
-  let to_obj t = catch_err Ezjsonm.get_dict t
-  let obj = Ezjsonm.dict
+  let to_obj t = catch_err Ezjsone.get_dict t
+  let obj = Ezjsone.dict
   let null = `Null
   let is_null = function `Null -> true | _ -> false
 end
 
-module Geo = Geojson.Make (Ezjsonm_parser)
+module Geo = Geojson.Make (Ezjsone_parser)
 
 let find_code expected_code nom file =
   let s =
-    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsonm.from_string
+    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsone.from_string
   in
   let find f =
     match Geo.Feature.properties f with
     | Some props ->
-        let nom' = Ezjsonm.find props [ "nom" ] |> Ezjsonm.get_string in
+        let nom' = Ezjsone.find props [ "nom" ] |> Ezjsone.get_string in
         nom = nom'
     | _ -> false
   in
@@ -50,7 +50,7 @@ let find_code expected_code nom file =
             match List.find_opt (fun f -> find f) features with
             | Some f ->
                 Option.map (fun v ->
-                    Ezjsonm.find v [ "code" ] |> Ezjsonm.get_string)
+                    Ezjsone.find v [ "code" ] |> Ezjsone.get_string)
                 @@ Geo.Feature.properties f
             | None -> None)
         | _ -> assert false)
@@ -60,7 +60,7 @@ let find_code expected_code nom file =
 
 let of_json_to_json file =
   let s =
-    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsonm.from_string
+    Result.get_ok @@ Bos.OS.File.read (Fpath.v file) |> Ezjsone.from_string
   in
   Staged.stage @@ fun () ->
   ignore

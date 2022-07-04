@@ -2,4 +2,4 @@
  (names test test_iters)
  (deps
   (source_tree input))
- (libraries geojsonm))
+ (libraries eio_main geojsonm))
