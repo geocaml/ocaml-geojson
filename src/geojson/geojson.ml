@@ -158,6 +158,8 @@ module Make (J : Intf.Json) = struct
       let typ = "MultiLineString"
       let lines = Fun.id
       let v = Fun.id
+      let to_positions = Fun.id
+      let of_positions = Fun.id
 
       let parse_coords coords =
         try J.to_array (decode_or_err LineString.parse_coords) coords
@@ -186,6 +188,8 @@ module Make (J : Intf.Json) = struct
          to avoid the allocations here. *)
       let interior_rings t = Array.sub t 1 (Array.length t - 1)
       let v = Fun.id
+      let to_positions = Fun.id
+      let of_positions = Fun.id
 
       let parse_coords coords =
         try
@@ -214,6 +218,8 @@ module Make (J : Intf.Json) = struct
       let typ = "MultiPolygon"
       let polygons = Fun.id
       let v = Fun.id
+      let to_positions = Fun.id
+      let of_positions = Fun.id
 
       let parse_coords coords =
         try J.to_array (decode_or_err Polygon.parse_coords) coords
