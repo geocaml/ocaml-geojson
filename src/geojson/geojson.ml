@@ -131,8 +131,6 @@ module Make (J : Intf.Json) = struct
       let typ = "LineString"
       let coordinates = Fun.id
       let v = Fun.id
-      let to_positions = Fun.id
-      let of_positions = Fun.id
 
       let parse_coords coords =
         let* arr =
