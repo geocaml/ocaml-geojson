@@ -129,7 +129,7 @@ module type Geometry = sig
     (** A line string is two or more points *)
 
     val coordinates : t -> Position.t array
-    (** Convert the line into a positionn array *)
+    (** Convert the line into a position array *)
 
     val v : Position.t array -> t
     (** Create a line string from positions, will raise [Invalid_argument] if
@@ -145,6 +145,12 @@ module type Geometry = sig
 
     val v : LineString.t array -> t
     (** Create a multiline string *)
+
+    val to_positions : t -> Position.t array array
+    (** Convert directly to the positions that make up the lines. *)
+
+    val of_positions : Position.t array array -> t
+    (** Convert directly from positions to lines *)
   end
 
   module Polygon : sig
@@ -166,6 +172,12 @@ module type Geometry = sig
     val v : LineString.t array -> t
     (** Create a polygon object from an array of close line strings (note no
         checking is down here to ensure the loops are indeed closed.) *)
+
+    val to_positions : t -> Position.t array array
+    (** Convert directly to the positions that make up the lines. *)
+
+    val of_positions : Position.t array array -> t
+    (** Convert directly from positions to lines *)
   end
 
   module MultiPolygon : sig
@@ -177,6 +189,12 @@ module type Geometry = sig
 
     val v : Polygon.t array -> t
     (** Create a multi-polygon object from an array of {!Polygon.t}s *)
+
+    val to_positions : t -> Position.t array array array
+    (** Convert directly to the positions that make up the polygons *)
+
+    val of_positions : Position.t array array array -> t
+    (** Convert directly from positions to polygons *)
   end
 
   type geometry =
