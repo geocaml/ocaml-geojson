@@ -15,11 +15,8 @@ let pp = Format.fprintf
    module. He won't be upset. *)
 
 let unsafe_byte s j = Char.code (String.unsafe_get s j)
-
-let unsafe_blit s soff d doff =
-  Bytes.unsafe_blit (Bytes.unsafe_of_string s) soff d doff
-
-let unsafe_set_byte s j byte = Bytes.unsafe_set s j (Char.unsafe_chr byte)
+let unsafe_blit s soff d doff = Cstruct.blit_from_string s soff d doff
+let unsafe_set_byte s j byte = Cstruct.set_char s j (Char.unsafe_chr byte)
 
 (* Characters and their classes *)
 
@@ -184,7 +181,7 @@ let pp_error ppf = function
 
 type pos = int * int
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
-type src = unit -> (bytes * int * int) option
+type src = unit -> (Cstruct.t * int * int) option
 type decode = [ `Await | `End | `Lexeme of lexeme | `Error of error ]
 type uncut = [ `Comment of [ `M | `S ] * string | `White of string ]
 
@@ -680,7 +677,7 @@ let expect_json v =
 let expect_lend lstart v =
   expect (if lstart = `As then "`Lexeme `Ae" else "`Lexeme `Oe") v
 
-type dst = (bytes * int * int) option -> unit
+type dst = (Cstruct.t * int * int) option -> unit
 type encode = [ `Await | `End | `Lexeme of lexeme ]
 
 type encoder = {
@@ -688,7 +685,7 @@ type encoder = {
   minify : bool; (* [true] for compact output. *)
   mutable encode_ : bool;
   mutable started : bool;
-  mutable o : Bytes.t; (* current output chunk. *)
+  mutable o : Cstruct.t; (* current output chunk. *)
   mutable o_pos : int; (* next output position to write. *)
   mutable o_max : int; (* maximal output position to write. *)
   buf : Buffer.t; (* buffer to format floats. *)
@@ -702,7 +699,7 @@ let o_rem e = e.o_max - e.o_pos + 1 (* remaining bytes to write in [e.o]. *)
 
 let dst e s j l =
   (* set [e.o] with [s]. *)
-  if j < 0 || l < 0 || j + l > Bytes.length s then invalid_bounds j l;
+  if j < 0 || l < 0 || j + l > Cstruct.length s then invalid_bounds j l;
   e.o <- s;
   e.o_pos <- j;
   e.o_max <- j + l - 1
@@ -740,10 +737,10 @@ let rec writebuf j l e =
   (* write [l] bytes from [e.buf] starting at [j]. *)
   let rem = o_rem e in
   if rem >= l then (
-    Buffer.blit e.buf j e.o e.o_pos l;
+    Cstruct.blit_from_bytes (Buffer.to_bytes e.buf) j e.o e.o_pos l;
     e.o_pos <- e.o_pos + l)
   else (
-    Buffer.blit e.buf j e.o e.o_pos rem;
+    Cstruct.blit_from_bytes (Buffer.to_bytes e.buf) j e.o e.o_pos rem;
     e.o_pos <- e.o_pos + rem;
     flush e ~stop:false;
     writebuf (j + rem) (l - rem) e)
@@ -753,7 +750,7 @@ let w_indent e =
     let spaces e indent =
       let max = e.o_pos + indent - 1 in
       for j = e.o_pos to max do
-        unsafe_set_byte e.o j u_sp
+        Cstruct.set_uint8 e.o j u_sp
       done;
       e.o_pos <- max + 1
     in
@@ -928,8 +925,8 @@ let encode_json e = function
   | `Await -> ()
 
 let encoder ?(minify = true) dst =
-  let o = Bytes.create io_buffer_size in
-  let o_max = Bytes.length o - 1 in
+  let o = Cstruct.create io_buffer_size in
+  let o_max = Cstruct.length o - 1 in
   if o_max = 0 then invalid_arg "buf's length is empty"
   else
     {

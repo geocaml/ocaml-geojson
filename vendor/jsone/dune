@@ -1,4 +1,4 @@
 (library
  (name jsone)
  (public_name geojson.jsone)
- (libraries uutfe))
+ (libraries uutfe cstruct))

@@ -101,7 +101,7 @@ val pp_error : Format.formatter -> [< error ] -> unit
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
 (** The type for Unicode encoding schemes. *)
 
-type src = unit -> (bytes * int * int) option
+type src = unit -> (Cstruct.t * int * int) option
 (** The type for input sources. With a [`Manual] source the client must provide
     input with {!Manual.src}. *)
 
@@ -147,7 +147,7 @@ val decoder_src : decoder -> src
 
 (** {1:encode Encode} *)
 
-type dst = (bytes * int * int) option -> unit
+type dst = (Cstruct.t * int * int) option -> unit
 (** The type for output destinations. With a [`Manual] destination the client
     must provide output storage with {!Manual.dst}. *)
 
@@ -190,12 +190,12 @@ val encoder_minify : encoder -> bool
 
     {b Warning.} Use only with [`Manual] decoders and encoders. *)
 module Manual : sig
-  val src : decoder -> Bytes.t -> int -> int -> unit
+  val src : decoder -> Cstruct.t -> int -> int -> unit
   (** [src d s j l] provides [d] with [l] bytes to read, starting at [j] in [s].
       This byte range is read by calls to {!decode} until [`Await] is returned.
       To signal the end of input call the function with [l = 0]. *)
 
-  val dst : encoder -> Bytes.t -> int -> int -> unit
+  val dst : encoder -> Cstruct.t -> int -> int -> unit
   (** [dst e s j l] provides [e] with [l] bytes to write, starting at [j] in
       [s]. This byte range is written by calls to {!encode} with [e] until
       [`Partial] is returned. Use {!dst_rem} to know the remaining number of

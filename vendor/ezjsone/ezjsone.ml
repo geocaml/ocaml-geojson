@@ -145,9 +145,7 @@ let value_to_dst ?(minify = true) dst json =
 let buffer_to_dst buf = function
   | Some (bs, off, len) ->
       Flow.(
-        copy
-          (cstruct_source [ Cstruct.of_bytes ~off ~len bs ])
-          (Flow.buffer_sink buf))
+        copy (cstruct_source [ Cstruct.sub bs off len ]) (Flow.buffer_sink buf))
   | None -> ()
 
 let value_to_buffer ?minify buf json =
@@ -200,11 +198,11 @@ let value_from_src src =
   | Error e -> parse_error `Null "JSON.of_buffer %s" (read_error_description e)
 
 let src_of_string str =
-  let buff = Cstruct.create 2048 in
+  let buff = Cstruct.create 65536 in
   fun () ->
     try
       let got = Flow.(read (string_source str) buff) in
-      let t = Some (Cstruct.to_bytes buff, 0, got) in
+      let t = Some (buff, 0, got) in
       t
     with End_of_file -> None
 

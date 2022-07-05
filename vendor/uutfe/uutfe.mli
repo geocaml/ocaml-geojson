@@ -65,7 +65,7 @@ val encoding_to_string : [< decoder_encoding ] -> string
 (* The effects based approach is taken from the work already done
    in https://github.com/dbuenzli/nbcodec/blob/master/src/se.mli *)
 
-type src = unit -> (bytes * int * int) option
+type src = unit -> (Cstruct.t * int * int) option
 
 type nln = [ `ASCII of Uchar.t | `NLF of Uchar.t | `Readline of Uchar.t ]
 (** The type for newline normalizations. The variant argument is the
@@ -240,7 +240,7 @@ val pp_decode :
 
 (** {1:encode Encode} *)
 
-type dst = (bytes * int * int) option -> unit
+type dst = (Cstruct.t * int * int) option -> unit
 
 type encoder
 (** The type for Unicode encoders. *)
@@ -280,12 +280,12 @@ val encoder_dst : encoder -> dst
 
     {b Warning.} Use only with [`Manual] decoder and encoders. *)
 module Manual : sig
-  val src : decoder -> Bytes.t -> int -> int -> unit
+  val src : decoder -> Cstruct.t -> int -> int -> unit
   (** [src d s j l] provides [d] with [l] bytes to read, starting at [j] in [s].
       This byte range is read by calls to {!decode} with [d] until [`Await] is
       returned. To signal the end of input call the function with [l = 0]. *)
 
-  val dst : encoder -> Bytes.t -> int -> int -> unit
+  val dst : encoder -> Cstruct.t -> int -> int -> unit
   (** [dst e s j l] provides [e] with [l] bytes to write, starting at [j] in
       [s]. This byte range is written by calls to {!encode} with [e] until
       [`Partial] is returned. Use {!dst_rem} to know the remaining number of

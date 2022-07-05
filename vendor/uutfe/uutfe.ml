@@ -15,10 +15,14 @@ let invalid_bounds j l =
    the module. He won't be upset. *)
 
 let unsafe_chr = Char.unsafe_chr
-let unsafe_blit = Bytes.unsafe_blit
+
+(* Hmmmmmmm........!!!!!! *)
+let unsafe_blit s soff d doff l =
+  try Cstruct.blit s soff d doff l with _ -> ()
+
 let unsafe_array_get = Array.unsafe_get
-let unsafe_byte s j = Char.code (Bytes.unsafe_get s j)
-let unsafe_set_byte s j byte = Bytes.unsafe_set s j (Char.unsafe_chr byte)
+let unsafe_byte s j = Char.code (Cstruct.get_char s j)
+let unsafe_set_byte s j byte = Cstruct.set_char s j (Char.unsafe_chr byte)
 
 (* Unicode characters *)
 
@@ -56,16 +60,16 @@ let encoding_to_string = function
 
 (* Base character decoders. They assume enough data. *)
 
-let malformed s j l = `Malformed (Bytes.sub_string s j l)
+let malformed s j l = `Malformed (Cstruct.sub s j l |> Cstruct.to_string)
 
 let malformed_pair be hi s j l =
   (* missing or half low surrogate at eoi. *)
-  let bs1 = Bytes.(sub s j l) in
-  let bs0 = Bytes.create 2 in
+  let bs1 = Cstruct.(sub s j l) in
+  let bs0 = Cstruct.create 2 in
   let j0, j1 = if be then (0, 1) else (1, 0) in
   unsafe_set_byte bs0 j0 (hi lsr 8);
   unsafe_set_byte bs0 j1 (hi land 0xFF);
-  `Malformed Bytes.(unsafe_to_string (cat bs0 bs1))
+  `Malformed Cstruct.(to_string (append bs0 bs1))
 
 let r_us_ascii s j =
   (* assert (0 <= j && j < String.length s); *)
@@ -422,7 +426,7 @@ let r_encoding s j l =
 
 (* Decode *)
 
-type src = unit -> (bytes * int * int) option
+type src = unit -> (Cstruct.t * int * int) option
 type nln = [ `ASCII of Uchar.t | `NLF of Uchar.t | `Readline of Uchar.t ]
 type decode = [ `Await | `End | `Malformed of string | `Uchar of Uchar.t ]
 
@@ -444,10 +448,10 @@ type decoder = {
   mutable encoding : decoder_encoding; (* decoded encoding. *)
   nln : nln option; (* newline normalization (if any). *)
   nl : Uchar.t; (* newline normalization character. *)
-  mutable i : Bytes.t; (* current input chunk. *)
+  mutable i : Cstruct.t; (* current input chunk. *)
   mutable i_pos : int; (* input current position. *)
   mutable i_max : int; (* input maximal position. *)
-  t : Bytes.t; (* four bytes temporary buffer for overlapping reads. *)
+  t : Cstruct.t; (* four bytes temporary buffer for overlapping reads. *)
   mutable t_len : int; (* current byte length of [t]. *)
   mutable t_need : int; (* number of bytes needed in [t]. *)
   mutable removed_bom : bool; (* [true] if an initial BOM was removed. *)
@@ -475,13 +479,13 @@ type decoder = {
 let i_rem d = d.i_max - d.i_pos + 1 (* remaining bytes to read in [d.i]. *)
 
 let eoi d =
-  d.i <- Bytes.empty;
+  d.i <- Cstruct.empty;
   d.i_pos <- 0;
   d.i_max <- min_int (* set eoi in [d]. *)
 
 let src d s j l =
   (* set [d.i] with [s]. *)
-  if j < 0 || l < 0 || j + l > Bytes.length s then invalid_bounds j l
+  if j < 0 || l < 0 || j + l > Cstruct.length s then invalid_bounds j l
   else if l = 0 then eoi d
   else (
     d.i <- s;
@@ -725,7 +729,7 @@ let guessed_utf_16 d be v =
       | (`Malformed _ | `Uchar _) as v -> ret (b3 t_decode_utf_16) v 2 d
       | `Hi hi ->
           if d.t_len < 3 then
-            ret decode_utf_16 (malformed_pair be hi Bytes.empty 0 0) d.t_len d
+            ret decode_utf_16 (malformed_pair be hi Cstruct.empty 0 0) d.t_len d
           else (b3 (t_decode_utf_16_lo hi)) d)
 
 let guess_encoding d =
@@ -950,10 +954,10 @@ let decoder ?nln ?encoding src =
     encoding;
     nln = (nln :> nln option);
     nl;
-    i = Bytes.empty;
+    i = Cstruct.empty;
     i_pos = 1;
     i_max = 0;
-    t = Bytes.create 4;
+    t = Cstruct.create 4;
     t_len = 0;
     t_need = 0;
     removed_bom = false;
@@ -982,16 +986,16 @@ let set_decoder_encoding d e =
 
 (* Encode *)
 
-type dst = (bytes * int * int) option -> unit
+type dst = (Cstruct.t * int * int) option -> unit
 type encode = [ `Await | `End | `Uchar of Uchar.t ]
 
 type encoder = {
   dst : dst; (* output destination. *)
   encoding : encoding; (* encoded encoding. *)
-  mutable o : Bytes.t; (* current output chunk. *)
+  mutable o : Cstruct.t; (* current output chunk. *)
   mutable o_pos : int; (* next output position to write. *)
   mutable o_max : int; (* maximal output position to write. *)
-  t : Bytes.t; (* four bytes buffer for overlapping writes. *)
+  t : Cstruct.t; (* four bytes buffer for overlapping writes. *)
   mutable t_pos : int; (* next position to read in [t]. *)
   mutable t_max : int; (* maximal position to read in [t]. *)
   mutable k : (* encoder continuation. *)
@@ -1008,7 +1012,7 @@ let o_rem e = e.o_max - e.o_pos + 1 (* remaining bytes to write in [e.o]. *)
 
 let dst e s j l =
   (* set [e.o] with [s]. *)
-  if j < 0 || l < 0 || j + l > Bytes.length s then invalid_bounds j l;
+  if j < 0 || l < 0 || j + l > Cstruct.length s then invalid_bounds j l;
   e.o <- s;
   e.o_pos <- j;
   e.o_max <- j + l - 1
@@ -1206,8 +1210,8 @@ let encode_fun = function
   | `UTF_16LE -> encode_utf_16le
 
 let encoder encoding dst =
-  let buf = Bytes.create io_buffer_size in
-  let o_max = Bytes.length buf - 1 in
+  let buf = Cstruct.create io_buffer_size in
+  let o_max = Cstruct.length buf - 1 in
   if o_max = 0 then invalid_arg "buf's length is empty"
   else
     {
@@ -1216,7 +1220,7 @@ let encoder encoding dst =
       o = buf;
       o_pos = 0;
       o_max;
-      t = Bytes.create 4;
+      t = Cstruct.create 4;
       t_pos = 1;
       t_max = 0;
       k = encode_fun encoding;
@@ -1238,8 +1242,8 @@ end
 
 module String = struct
   let encoding_guess s =
-    let s = Bytes.unsafe_of_string s in
-    match r_encoding s 0 (max (Bytes.length s) 3) with
+    let s = Cstruct.of_string s in
+    match r_encoding s 0 (max (Cstruct.length s) 3) with
     | `UTF_8 d -> (`UTF_8, d = `BOM)
     | `UTF_16BE d -> (`UTF_16BE, d = `BOM)
     | `UTF_16LE d -> (`UTF_16LE, d = `BOM)
@@ -1260,7 +1264,7 @@ module String = struct
     in
     let len = match len with None -> String.length s - pos | Some l -> l in
     let last = pos + len - 1 in
-    loop acc f (Bytes.unsafe_of_string s) pos last
+    loop acc f (Cstruct.of_string s) pos last
 
   let fold_utf_16be ?(pos = 0) ?len f acc s =
     let rec loop acc f s i last =
@@ -1280,7 +1284,7 @@ module String = struct
     in
     let len = match len with None -> String.length s - pos | Some l -> l in
     let last = pos + len - 1 in
-    loop acc f (Bytes.unsafe_of_string s) pos last
+    loop acc f (Cstruct.of_string s) pos last
 
   let fold_utf_16le ?(pos = 0) ?len f acc s =
     (* [fold_utf_16be], bytes swapped. *)
@@ -1301,7 +1305,7 @@ module String = struct
     in
     let len = match len with None -> String.length s - pos | Some l -> l in
     let last = pos + len - 1 in
-    loop acc f (Bytes.unsafe_of_string s) pos last
+    loop acc f (Cstruct.of_string s) pos last
 end
 
 module Buffer = struct
