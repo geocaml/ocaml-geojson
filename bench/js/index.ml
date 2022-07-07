@@ -1,22 +1,22 @@
-module Ezjsonm_parser = struct
-  type t = Ezjsonm.value
+module Ezjsone_parser = struct
+  type t = Ezjsone.value
 
   let catch_err f v =
-    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+    try Ok (f v) with Ezjsone.Parse_error (_, s) -> Error (`Msg s)
 
-  let find = Ezjsonm.find_opt
-  let to_string t = catch_err Ezjsonm.get_string t
-  let string = Ezjsonm.string
-  let to_float t = catch_err Ezjsonm.get_float t
-  let float = Ezjsonm.float
-  let to_int t = catch_err Ezjsonm.get_int t
-  let int = Ezjsonm.int
-  let to_list f t = catch_err (Ezjsonm.get_list f) t
-  let list f t = Ezjsonm.list f t
+  let find = Ezjsone.find_opt
+  let to_string t = catch_err Ezjsone.get_string t
+  let string = Ezjsone.string
+  let to_float t = catch_err Ezjsone.get_float t
+  let float = Ezjsone.float
+  let to_int t = catch_err Ezjsone.get_int t
+  let int = Ezjsone.int
+  let to_list f t = catch_err (Ezjsone.get_list f) t
+  let list f t = Ezjsone.list f t
   let to_array f t = Result.map Array.of_list @@ to_list f t
   let array f t = list f (Array.to_list t)
-  let to_obj t = catch_err Ezjsonm.get_dict t
-  let obj = Ezjsonm.dict
+  let to_obj t = catch_err Ezjsone.get_dict t
+  let obj = Ezjsone.dict
   let null = `Null
   let is_null = function `Null -> true | _ -> false
 end
@@ -58,7 +58,7 @@ module Brr_parser = struct
   let is_null = Jv.is_null
 end
 
-module Ezgeo = Geojson.Make (Ezjsonm_parser)
+module Ezgeo = Geojson.Make (Ezjsone_parser)
 module Brrgeo = Geojson.Make (Brr_parser)
 
 let x = Jv.get Jv.global "__DATA__" |> Jv.to_jstr
@@ -69,12 +69,12 @@ let () =
   Console.log [ x ];
   let s = Jstr.to_string x in
   let start_ez = Performance.now_ms G.performance in
-  let json = Ezjsonm.value_from_string s in
+  let json = Ezjsone.value_from_string s in
   let _geo = Ezgeo.of_json json in
   let finish_ez = Performance.now_ms G.performance in
   let json = Result.get_ok @@ Json.decode x in
   let start_brr = Performance.now_ms G.performance in
   let _geo = Brrgeo.of_json json in
   let finish_brr = Performance.now_ms G.performance in
-  Console.log [ Jstr.v "Ezjsonm: "; Jv.of_float @@ (finish_ez -. start_ez) ];
+  Console.log [ Jstr.v "Ezjsone: "; Jv.of_float @@ (finish_ez -. start_ez) ];
   Console.log [ Jstr.v "Brr: "; Jv.of_float @@ (finish_brr -. start_brr) ]

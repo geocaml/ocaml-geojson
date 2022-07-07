@@ -1,6 +1,6 @@
 (executable
  (name bench)
- (libraries bechamel bos notty.unix bechamel-notty geojson ezjsonm))
+ (libraries bechamel bos notty.unix bechamel-notty geojson ezjsone))
 
 (rule
  (alias bench)
