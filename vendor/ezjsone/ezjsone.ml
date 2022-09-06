@@ -143,8 +143,7 @@ let value_to_dst ?(minify = true) dst json =
   ignore (Jsone.encode e `End)
 
 let buffer_to_dst buf bs =
-      Flow.(
-        copy (cstruct_source [ bs ]) (Flow.buffer_sink buf))
+  Flow.(copy (cstruct_source [ bs ]) (Flow.buffer_sink buf))
 
 let value_to_buffer ?minify buf json =
   value_to_dst ?minify (buffer_to_dst buf) json

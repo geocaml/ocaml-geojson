@@ -30,10 +30,7 @@ let with_src cwd f func =
   Eio.Path.(with_open_in (cwd / f)) @@ fun ic -> func @@ src_of_flow ic
 
 let buffer_to_dst buf bs =
-      Eio.Flow.(
-        copy
-          (cstruct_source [ bs ])
-          (Eio.Flow.buffer_sink buf))
+  Eio.Flow.(copy (cstruct_source [ bs ]) (Eio.Flow.buffer_sink buf))
 
 let () =
   Eio_main.run @@ fun env ->

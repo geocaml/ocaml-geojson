@@ -498,7 +498,7 @@ let refill k d =
       eoi d;
       k d
   | s ->
-      let pos, len = s.off, s.len in
+      let pos, len = (s.off, s.len) in
       d.i <- s;
       d.i_pos <- pos;
       d.i_max <- pos + len - 1;
