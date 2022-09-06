@@ -21,8 +21,8 @@ let unsafe_blit s soff d doff l =
   try Cstruct.blit s soff d doff l with _ -> ()
 
 let unsafe_array_get = Array.unsafe_get
-let unsafe_byte s j = Char.code (Cstruct.get_char s j)
-let unsafe_set_byte s j byte = Cstruct.set_char s j (Char.unsafe_chr byte)
+let unsafe_byte s j = Char.code (Bigarray.Array1.unsafe_get s.Cstruct.buffer j)
+let unsafe_set_byte s j byte = Bigarray.Array1.unsafe_set s.Cstruct.buffer j (Char.unsafe_chr byte)
 
 (* Unicode characters *)
 
