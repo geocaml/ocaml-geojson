@@ -181,7 +181,7 @@ let pp_error ppf = function
 
 type pos = int * int
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
-type src = unit -> (Cstruct.t * int * int) option
+type src = unit -> Cstruct.t
 type decode = [ `Await | `End | `Lexeme of lexeme | `Error of error ]
 type uncut = [ `Comment of [ `M | `S ] * string | `White of string ]
 
@@ -677,7 +677,7 @@ let expect_json v =
 let expect_lend lstart v =
   expect (if lstart = `As then "`Lexeme `Ae" else "`Lexeme `Oe") v
 
-type dst = (Cstruct.t * int * int) option -> unit
+type dst = Cstruct.t -> unit
 type encode = [ `Await | `End | `Lexeme of lexeme ]
 
 type encoder = {
@@ -707,9 +707,9 @@ let dst e s j l =
 (* let partial k e = function `Await -> k e | v -> expect_await v *)
 let flush e ~stop =
   if stop then (
-    if e.o_pos <> 0 then e.dst (Some (e.o, 0, e.o_pos));
-    e.dst None)
-  else e.dst (Some (e.o, 0, e.o_pos));
+    if e.o_pos <> 0 then e.dst (Cstruct.sub e.o 0 e.o_pos);
+    e.dst Cstruct.empty)
+  else e.dst (Cstruct.sub e.o 0 e.o_pos);
   e.o_pos <- 0
 
 let rec writeb b e =

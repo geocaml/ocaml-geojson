@@ -65,7 +65,7 @@ val encoding_to_string : [< decoder_encoding ] -> string
 (* The effects based approach is taken from the work already done
    in https://github.com/dbuenzli/nbcodec/blob/master/src/se.mli *)
 
-type src = unit -> (Cstruct.t * int * int) option
+type src = unit -> Cstruct.t
 
 type nln = [ `ASCII of Uchar.t | `NLF of Uchar.t | `Readline of Uchar.t ]
 (** The type for newline normalizations. The variant argument is the
@@ -240,7 +240,7 @@ val pp_decode :
 
 (** {1:encode Encode} *)
 
-type dst = (Cstruct.t * int * int) option -> unit
+type dst = Cstruct.t -> unit
 
 type encoder
 (** The type for Unicode encoders. *)

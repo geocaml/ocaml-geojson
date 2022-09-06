@@ -22,22 +22,18 @@ let get_name = function
 let src_of_flow flow =
   let buff = Cstruct.create 2048 in
   fun () ->
-    try
-      let got = Eio.Flow.(read flow buff) in
-      let t = Some (Cstruct.to_bytes buff, 0, got) in
-      t
-    with End_of_file -> None
+    let got = Eio.Flow.(read flow buff) in
+    let t = Cstruct.sub buff 0 got in
+    t
 
 let with_src cwd f func =
-  Eio.Dir.with_open_in cwd f @@ fun ic -> func @@ src_of_flow ic
+  Eio.Path.(with_open_in (cwd / f)) @@ fun ic -> func @@ src_of_flow ic
 
-let buffer_to_dst buf = function
-  | Some (bs, off, len) ->
+let buffer_to_dst buf bs =
       Eio.Flow.(
         copy
-          (cstruct_source [ Cstruct.of_bytes ~off ~len bs ])
+          (cstruct_source [ bs ])
           (Eio.Flow.buffer_sink buf))
-  | None -> ()
 
 let () =
   Eio_main.run @@ fun env ->

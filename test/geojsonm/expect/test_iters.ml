@@ -6,14 +6,12 @@ let print_property prop = print_endline @@ Ezjsone.value_to_string prop
 let src_of_flow flow =
   let buff = Cstruct.create 2048 in
   fun () ->
-    try
-      let got = Eio.Flow.(read flow buff) in
-      let t = Some (Cstruct.to_bytes buff, 0, got) in
-      t
-    with End_of_file -> None
+    let got = Eio.Flow.(read flow buff) in
+    let t = Cstruct.sub buff 0 got in
+    t
 
 let with_src cwd f func =
-  Eio.Dir.with_open_in cwd f @@ fun ic -> func @@ src_of_flow ic
+  Eio.Path.(with_open_in (cwd / f)) @@ fun ic -> func @@ src_of_flow ic
 
 let () =
   Eio_main.run @@ fun env ->

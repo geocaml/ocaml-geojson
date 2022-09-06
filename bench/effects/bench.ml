@@ -1,3 +1,5 @@
+open Eio
+
 module Je = struct
   type src = Jsone.src
   type dst = Jsone.dst
@@ -25,16 +27,12 @@ end
 let src_of_flow flow =
   let buff = Cstruct.create 65536 in
   fun () ->
-    try
-      let got = Eio.Flow.(read flow buff) in
-      let t = Some (buff, 0, got) in
-      t
-    with End_of_file -> None
+    let got = Eio.Flow.(read flow buff) in
+    let t = Cstruct.sub buff 0 got in
+    t
 
-let dst_of_flow flow = function
-  | Some (bs, off, len) ->
-      Eio.Flow.(copy (cstruct_source [ Cstruct.sub bs off len ]) flow)
-  | None -> ()
+let dst_of_flow flow bs =
+      Eio.Flow.(copy (cstruct_source [ bs ]) flow)
 
 let run_test_effects ~fs ~file ~out =
   let fn t =
@@ -48,8 +46,8 @@ let run_test_effects ~fs ~file ~out =
       G.Geometry.(Polygon (Polygon.of_positions arr), fm)
     | t -> t
   in
-  Eio.Dir.with_open_in fs file @@ fun in_flow -> 
-  Eio.Dir.with_open_out ~create:(`If_missing 0o666) fs out @@ fun out_flow -> 
+  Path.(with_open_in (fs / file)) @@ fun in_flow -> 
+  Path.(with_open_out ~create:(`If_missing 0o666) (fs / out)) @@ fun out_flow -> 
   Je.map_geometry fn (src_of_flow in_flow) (dst_of_flow out_flow)
 
 let run_test ~file ~out =

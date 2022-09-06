@@ -426,7 +426,7 @@ let r_encoding s j l =
 
 (* Decode *)
 
-type src = unit -> (Cstruct.t * int * int) option
+type src = unit -> Cstruct.t
 type nln = [ `ASCII of Uchar.t | `NLF of Uchar.t | `Readline of Uchar.t ]
 type decode = [ `Await | `End | `Malformed of string | `Uchar of Uchar.t ]
 
@@ -494,10 +494,11 @@ let src d s j l =
 
 let refill k d =
   match d.src () with
-  | None ->
+  | exception End_of_file ->
       eoi d;
       k d
-  | Some (s, pos, len) ->
+  | s ->
+      let pos, len = s.off, s.len in
       d.i <- s;
       d.i_pos <- pos;
       d.i_max <- pos + len - 1;
@@ -986,7 +987,7 @@ let set_decoder_encoding d e =
 
 (* Encode *)
 
-type dst = (Cstruct.t * int * int) option -> unit
+type dst = Cstruct.t -> unit
 type encode = [ `Await | `End | `Uchar of Uchar.t ]
 
 type encoder = {
@@ -1020,9 +1021,9 @@ let dst e s j l =
 (* let partial k e = function `Await -> k e | `Uchar _ | `End -> invalid_encode () *)
 let flush e ~stop =
   if stop then (
-    if e.o_pos <> 0 then e.dst (Some (e.o, 0, e.o_pos));
-    e.dst None)
-  else e.dst (Some (e.o, 0, e.o_pos));
+    if e.o_pos <> 0 then e.dst (Cstruct.sub e.o 0 e.o_pos);
+    e.dst Cstruct.empty)
+  else e.dst (Cstruct.sub e.o 0 e.o_pos);
   e.o_pos <- 0
 
 let t_range e max =

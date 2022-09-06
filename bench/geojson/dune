@@ -1,9 +1,9 @@
-(executable
- (name bench)
- (libraries bechamel bos notty.unix bechamel-notty geojson ezjsone))
+; (executable
+;  (name bench)
+;  (libraries bechamel bos notty.unix bechamel-notty geojson ezjsone))
 
-(rule
- (alias bench)
- (deps inputs/arrondissements-occitanie.geojson ./bench.exe)
- (action
-  (run ./bench.exe)))
+; (rule
+;  (alias bench)
+;  (deps inputs/arrondissements-occitanie.geojson ./bench.exe)
+;  (action
+;   (run ./bench.exe)))

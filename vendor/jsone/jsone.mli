@@ -101,9 +101,8 @@ val pp_error : Format.formatter -> [< error ] -> unit
 type encoding = [ `UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE ]
 (** The type for Unicode encoding schemes. *)
 
-type src = unit -> (Cstruct.t * int * int) option
-(** The type for input sources. With a [`Manual] source the client must provide
-    input with {!Manual.src}. *)
+type src = unit -> Cstruct.t
+(** The type for input sources. If there is no more data, raise [End_of_file]. *)
 
 type decoder
 (** The type for JSON decoders. *)
@@ -147,9 +146,8 @@ val decoder_src : decoder -> src
 
 (** {1:encode Encode} *)
 
-type dst = (Cstruct.t * int * int) option -> unit
-(** The type for output destinations. With a [`Manual] destination the client
-    must provide output storage with {!Manual.dst}. *)
+type dst = Cstruct.t -> unit
+(** The type for output destinations. *)
 
 type encoder
 (** The type for JSON encoders. *)

@@ -142,11 +142,9 @@ let value_to_dst ?(minify = true) dst json =
   value json e Stack.Empty;
   ignore (Jsone.encode e `End)
 
-let buffer_to_dst buf = function
-  | Some (bs, off, len) ->
+let buffer_to_dst buf bs =
       Flow.(
-        copy (cstruct_source [ Cstruct.sub bs off len ]) (Flow.buffer_sink buf))
-  | None -> ()
+        copy (cstruct_source [ bs ]) (Flow.buffer_sink buf))
 
 let value_to_buffer ?minify buf json =
   value_to_dst ?minify (buffer_to_dst buf) json
@@ -200,11 +198,9 @@ let value_from_src src =
 let src_of_string str =
   let buff = Cstruct.create 65536 in
   fun () ->
-    try
-      let got = Flow.(read (string_source str) buff) in
-      let t = Some (buff, 0, got) in
-      t
-    with End_of_file -> None
+    let got = Flow.(read (string_source str) buff) in
+    let t = Cstruct.sub buff 0 got in
+    t
 
 let value_from_string_result str = value_from_src_result (src_of_string str)
 let value_from_string str = value_from_src (src_of_string str)
