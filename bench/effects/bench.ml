@@ -103,13 +103,13 @@ let run_bench ~fs ~clock ~n_iters =
 
 let main ~fs ~clock =
   Printf.printf " n_iters,      ns/iter, promoted/iter\n%!";
-  [ 10; 20; 50; 100; 200 ]
+  [ 10; 20; ]
   |> List.iter (fun n_iters -> run_bench ~fs ~clock ~n_iters)
 
 let () =
-  Printf.printf "<><><><> Jsonm <><><><>\n%!";
+  (* Printf.printf "<><><><> Jsonm <><><><>\n%!";
   Eio_main.run @@ fun env ->
-  main ~fs:None ~clock:(Eio.Stdenv.clock env);
+  main ~fs:None ~clock:(Eio.Stdenv.clock env); *)
   Printf.printf "<><><><> Jsone <><><><>\n%!";
   Eio_main.run @@ fun env ->
   main ~fs:(Some (Eio.Stdenv.fs env)) ~clock:(Eio.Stdenv.clock env)

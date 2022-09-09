@@ -482,7 +482,7 @@ let r_value err d =
   | _u -> err d
 
 let rec discard_to c1 c2 err d =
-  Printf.printf "%c %c\n" (Char.chr c1) (Char.chr c2);
+  (* Printf.printf "%c %c\n" (Char.chr c1) (Char.chr c2); *)
   if d.c = c1 || d.c = c2 || d.c = ux_eoi then err
   else (
     epos d;

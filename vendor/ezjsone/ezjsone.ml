@@ -195,9 +195,10 @@ let value_from_src src =
   | Error e -> parse_error `Null "JSON.of_buffer %s" (read_error_description e)
 
 let src_of_string str =
-  let buff = Cstruct.create 65536 in
+  let buff = Cstruct.create (String.length str) in
+  let src = Flow.string_source str in
   fun () ->
-    let got = Flow.(read (string_source str) buff) in
+    let got = Flow.(read src buff) in
     let t = Cstruct.sub buff 0 got in
     t
 
