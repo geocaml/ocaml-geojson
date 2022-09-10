@@ -16,14 +16,18 @@ let invalid_bounds j l =
 
 let unsafe_chr = Char.unsafe_chr
 
-external blit : Cstruct.buffer -> int -> Cstruct.buffer -> int -> int -> unit = "caml_blit_bigstring_to_bigstring" [@@noalloc]
+external blit : Cstruct.buffer -> int -> Cstruct.buffer -> int -> int -> unit
+  = "caml_blit_bigstring_to_bigstring"
+  [@@noalloc]
 
-let unsafe_blit s soff d doff l = 
+let unsafe_blit s soff d doff l =
   blit s.Cstruct.buffer soff d.Cstruct.buffer doff l
 
 let unsafe_array_get = Array.unsafe_get
 let unsafe_byte s j = Char.code (Bigarray.Array1.unsafe_get s.Cstruct.buffer j)
-let unsafe_set_byte s j byte = Bigarray.Array1.unsafe_set s.Cstruct.buffer j (Char.unsafe_chr byte)
+
+let unsafe_set_byte s j byte =
+  Bigarray.Array1.unsafe_set s.Cstruct.buffer j (Char.unsafe_chr byte)
 
 (* Unicode characters *)
 
@@ -499,11 +503,11 @@ let refill k d =
       eoi d;
       k d
   | s ->
-    let pos, len = (s.off, s.len) in
-    d.i <- s;
-    d.i_pos <- pos;
-    d.i_max <- pos + len - 1;
-    k d
+      let pos, len = (s.off, s.len) in
+      d.i <- s;
+      d.i_pos <- pos;
+      d.i_max <- pos + len - 1;
+      k d
 
 let t_need d need =
   d.t_len <- 0;
@@ -519,16 +523,16 @@ let rec t_fill k d =
   (* Start of Input *)
   if d.i_pos = max_int then refill (t_fill k) d
   else
-  let rem = i_rem d in
-  if rem < 0 (* eoi *) then k d
-  else
-    let need = d.t_need - d.t_len in
-    if rem < need then (
-      blit d rem;
-      refill (t_fill k) d)
-    else (
-      blit d need;
-      k d)
+    let rem = i_rem d in
+    if rem < 0 (* eoi *) then k d
+    else
+      let need = d.t_need - d.t_len in
+      if rem < need then (
+        blit d rem;
+        refill (t_fill k) d)
+      else (
+        blit d need;
+        k d)
 
 let ret k v byte_count d =
   (* return post-processed [v]. *)
@@ -661,46 +665,55 @@ and decode_utf_16le d =
    after is tedious, uutf's decoders are not designed to put bytes
    back in the stream. *)
 
-let guessed_utf_8 d =                   (* start decoder after `UTF_8 guess. *)
-   let b3 d =                                 (* handles the third read byte. *)
-     let b3 = unsafe_byte d.t 2 in
-     match utf_8_len.(b3) with
-     | 0 -> ret decode_utf_8 (malformed d.t 2 1) 1 d
-     | n ->
-         d.t_need <- n; d.t_len <- 1; unsafe_set_byte d.t 0 b3;
-         t_fill t_decode_utf_8 d
-   in
-   let b2 d =                                     (* handle second read byte. *)
-     let b2 = unsafe_byte d.t 1 in
-     let b3 = if d.t_len > 2 then b3 else decode_utf_8 (* decodes `End *) in
-     match utf_8_len.(b2) with
-     | 0 -> ret b3 (malformed d.t 1 1) 1 d
-     | 1 -> ret b3 (r_utf_8 d.t 1 1) 1 d
-     | n ->                         (* copy d.t.(1-2) to d.t.(0-1) and decode *)
-         d.t_need <- n;
-         unsafe_set_byte d.t 0 b2;
-         if (d.t_len < 3) then d.t_len <- 1 else
-         (d.t_len <- 2; unsafe_set_byte d.t 1 (unsafe_byte d.t 2); );
-         t_fill t_decode_utf_8 d
-   in
-   let b1 = unsafe_byte d.t 0 in                   (* handle first read byte. *)
-   let b2 = if d.t_len > 1 then b2 else decode_utf_8 (* decodes `End *) in
-   match utf_8_len.(b1) with
-   | 0 -> ret b2 (malformed d.t 0 1) 1 d
-   | 1 -> ret b2 (r_utf_8 d.t 0 1) 1 d
-   | 2 ->
-       if d.t_len < 2 then ret decode_utf_8 (malformed d.t 0 1) 1 d else
-       if d.t_len < 3 then ret decode_utf_8 (r_utf_8 d.t 0 2) 2 d else
-       ret b3 (r_utf_8 d.t 0 2) 2 d
-   | 3 ->
-       if d.t_len < 3
-       then ret decode_utf_8 (malformed d.t 0 d.t_len) d.t_len d
-       else ret decode_utf_8 (r_utf_8 d.t 0 3) 3 d
-   | 4 ->
-       if d.t_len < 3
-       then ret decode_utf_8 (malformed d.t 0 d.t_len) d.t_len d
-       else (d.t_need <- 4; t_fill t_decode_utf_8 d)
-   | _n -> assert false
+let guessed_utf_8 d =
+  (* start decoder after `UTF_8 guess. *)
+  let b3 d =
+    (* handles the third read byte. *)
+    let b3 = unsafe_byte d.t 2 in
+    match utf_8_len.(b3) with
+    | 0 -> ret decode_utf_8 (malformed d.t 2 1) 1 d
+    | n ->
+        d.t_need <- n;
+        d.t_len <- 1;
+        unsafe_set_byte d.t 0 b3;
+        t_fill t_decode_utf_8 d
+  in
+  let b2 d =
+    (* handle second read byte. *)
+    let b2 = unsafe_byte d.t 1 in
+    let b3 = if d.t_len > 2 then b3 else decode_utf_8 (* decodes `End *) in
+    match utf_8_len.(b2) with
+    | 0 -> ret b3 (malformed d.t 1 1) 1 d
+    | 1 -> ret b3 (r_utf_8 d.t 1 1) 1 d
+    | n ->
+        (* copy d.t.(1-2) to d.t.(0-1) and decode *)
+        d.t_need <- n;
+        unsafe_set_byte d.t 0 b2;
+        if d.t_len < 3 then d.t_len <- 1
+        else (
+          d.t_len <- 2;
+          unsafe_set_byte d.t 1 (unsafe_byte d.t 2));
+        t_fill t_decode_utf_8 d
+  in
+  let b1 = unsafe_byte d.t 0 in
+  (* handle first read byte. *)
+  let b2 = if d.t_len > 1 then b2 else decode_utf_8 (* decodes `End *) in
+  match utf_8_len.(b1) with
+  | 0 -> ret b2 (malformed d.t 0 1) 1 d
+  | 1 -> ret b2 (r_utf_8 d.t 0 1) 1 d
+  | 2 ->
+      if d.t_len < 2 then ret decode_utf_8 (malformed d.t 0 1) 1 d
+      else if d.t_len < 3 then ret decode_utf_8 (r_utf_8 d.t 0 2) 2 d
+      else ret b3 (r_utf_8 d.t 0 2) 2 d
+  | 3 ->
+      if d.t_len < 3 then ret decode_utf_8 (malformed d.t 0 d.t_len) d.t_len d
+      else ret decode_utf_8 (r_utf_8 d.t 0 3) 3 d
+  | 4 ->
+      if d.t_len < 3 then ret decode_utf_8 (malformed d.t 0 d.t_len) d.t_len d
+      else (
+        d.t_need <- 4;
+        t_fill t_decode_utf_8 d)
+  | _n -> assert false
 
 let guessed_utf_16 d be v =
   (* start decoder after `UTF_16{BE,LE} guess. *)

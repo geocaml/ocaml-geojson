@@ -4,9 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 (* Braced non-terminals in comments refer to RFC 4627 non-terminals. *)
-
-let debug = false
-let debug_print fn = if debug then fn ()
 let io_buffer_size = 65536 (* IO_BUFFER_SIZE 4.0.0 *)
 let pp = Format.fprintf
 
@@ -15,8 +12,16 @@ let pp = Format.fprintf
    module. He won't be upset. *)
 
 let unsafe_byte s j = Char.code (String.unsafe_get s j)
-let unsafe_blit s soff d doff = Cstruct.blit_from_string s soff d doff
-let unsafe_set_byte s j byte = Cstruct.set_char s j (Char.unsafe_chr byte)
+
+external unsafe_blit_from_string :
+  string -> int -> Cstruct.buffer -> int -> int -> unit
+  = "caml_blit_string_to_bigstring"
+  [@@noalloc]
+
+let unsafe_blit s so c co l = unsafe_blit_from_string s so c.Cstruct.buffer co l
+
+let unsafe_set_byte s j byte =
+  Bigarray.Array1.unsafe_set s.Cstruct.buffer j (Char.unsafe_chr byte)
 
 (* Characters and their classes *)
 
@@ -260,9 +265,7 @@ let ret_eoi _d = `End
 (* let ret (v : [< decode | uncut]) k d = d.k <- k; v *)
 let readc d =
   match Uutfe.decode d.u with
-  | `Uchar u ->
-      debug_print (fun () -> Printf.printf "CHAR: %c\n" (Uchar.to_char u));
-      d.c <- Uchar.to_int u
+  | `Uchar u -> d.c <- Uchar.to_int u
   | `End -> d.c <- ux_eoi
   | `Await -> assert false
   | `Malformed _bs ->
