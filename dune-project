@@ -5,7 +5,7 @@
 (generate_opam_files true)
 
 (source
- (github patricoferris/ocaml-geojson))
+ (github geocaml/ocaml-geojson))
 
 (license MIT)
 
@@ -26,12 +26,13 @@
    (ezjsone  :with-test)))
 
 (package
- (name geojsonm)
- (synopsis "Streaming geojson library using jsonm")
+ (name geojsone)
+ (synopsis "Streaming geojson library")
  (description "A library for manipulating Geojson as a stream, useful because Geojson can be gigabytes in size.")
- (depends 
+ (depends
    (geojson (= :version))
-   jsonm 
-   ezjsone))
+   (eio (>= 0.5))
+   hex
+   sexplib0))
 
 (using mdx 0.1)

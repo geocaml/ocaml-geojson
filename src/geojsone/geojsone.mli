@@ -102,3 +102,12 @@ val iter_geometry : (G.t -> unit) -> Jsone.src -> (unit, Err.t) result
 
 val iter_props : (Ezjsone.value -> unit) -> Jsone.src -> (unit, Err.t) result
 (** [iter_props f src] will apply [f] to each feature's properties field. *)
+
+(** {2 Effect-based, non-blocking libraries}
+
+    These libraries using effects to perform non-blocking parsing. They are
+    currently a part of Geojsone and exposed for other libraries to use. *)
+
+module Ezjsone = Ezjsone
+module Jsone = Jsone
+module Uutfe = Uutfe

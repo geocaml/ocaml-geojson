@@ -288,3 +288,7 @@ let iter_props f src =
     | `Await -> assert false
   in
   try Ok (go ()) with Abort e -> Error e
+
+module Ezjsone = Ezjsone
+module Jsone = Jsone
+module Uutfe = Uutfe

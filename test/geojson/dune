@@ -2,4 +2,4 @@
  (name test)
  (deps
   (source_tree files))
- (libraries alcotest ezjsone geojson))
+ (libraries alcotest geojsone geojson))

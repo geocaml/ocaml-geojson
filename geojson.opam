@@ -7,8 +7,8 @@ Geojson is a 'schema' for JSON to describe geospatial information.
 maintainer: ["patrick@sirref.org"]
 authors: ["Patrick Ferris"]
 license: "MIT"
-homepage: "https://github.com/patricoferris/ocaml-geojson"
-bug-reports: "https://github.com/patricoferris/ocaml-geojson/issues"
+homepage: "https://github.com/geocaml/ocaml-geojson"
+bug-reports: "https://github.com/geocaml/ocaml-geojson/issues"
 depends: [
   "dune" {>= "2.9"}
   "brr" {with-test}
@@ -34,4 +34,4 @@ build: [
   ]
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
-dev-repo: "git+https://github.com/patricoferris/ocaml-geojson.git"
+dev-repo: "git+https://github.com/geocaml/ocaml-geojson.git"

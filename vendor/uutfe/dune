@@ -1,4 +1,0 @@
-(library
- (name uutfe)
- (public_name geojson.uutfe)
- (libraries cstruct))

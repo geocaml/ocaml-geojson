@@ -1,4 +1,6 @@
 (library
  (name geojsone)
- (public_name geojsonm.effects)
- (libraries ezjsone geojson jsone))
+ (public_name geojsone)
+ (libraries geojson eio hex sexplib0))
+
+(include_subdirs unqualified)

@@ -1,7 +1,7 @@
 let print_geometry g =
-  print_endline @@ Ezjsone.value_to_string (Geojsone.G.to_json g)
+  print_endline @@ Geojsone.Ezjsone.value_to_string (Geojsone.G.to_json g)
 
-let print_property prop = print_endline @@ Ezjsone.value_to_string prop
+let print_property prop = print_endline @@ Geojsone.Ezjsone.value_to_string prop
 
 let src_of_flow flow =
   let buff = Cstruct.create 2048 in

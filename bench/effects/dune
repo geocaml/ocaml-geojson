@@ -1,3 +1,0 @@
-(executable
- (name bench)
- (libraries eio eio_main geojsonm geojsone))

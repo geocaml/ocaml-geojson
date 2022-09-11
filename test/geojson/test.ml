@@ -1,3 +1,5 @@
+open Geojsone
+
 let read_file f =
   let ic = open_in f in
   let rec loop acc =
@@ -15,6 +17,8 @@ let read_file f =
   String.concat "\n" lines
 
 module Ezjsone_parser = struct
+  open Geojsone
+
   type t = Ezjsone.value
 
   let catch_err f v =
