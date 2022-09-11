@@ -23,7 +23,7 @@
    (bos :with-test)
    (bechamel-notty (and (>= 0.1.0) :with-test))
    (alcotest :with-test)
-   (ezjsone  :with-test)))
+   (geojsone  (and :version :with-test))))
 
 (package
  (name geojsone)
