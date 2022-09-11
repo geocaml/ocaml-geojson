@@ -30,6 +30,7 @@
  (depends
    (geojson (= :version))
    (eio (>= 0.5))
+   (eio_main :with-test)
    hex
    sexplib0))
 
