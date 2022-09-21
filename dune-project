@@ -5,7 +5,7 @@
 (generate_opam_files true)
 
 (source
- (github patricoferris/ocaml-geojson))
+ (github geocaml/ocaml-geojson))
 
 (license MIT)
 
@@ -19,19 +19,20 @@
  (description "Geojson is a 'schema' for JSON to describe geospatial information. 
   This library provides a functor for building a module for manipulating and parsing Geojson into OCaml.")
  (depends
-   (brr :with-test)
    (bos :with-test)
-   (bechamel-notty (and (>= 0.1.0) :with-test))
    (alcotest :with-test)
-   (ezjsonm  :with-test)))
+   (geojsone  (and :version :with-test))))
 
 (package
- (name geojsonm)
- (synopsis "Streaming geojson library using jsonm")
+ (name geojsone)
+ (synopsis "Streaming geojson library")
  (description "A library for manipulating Geojson as a stream, useful because Geojson can be gigabytes in size.")
- (depends 
+ (depends
    (geojson (= :version))
-   jsonm 
-   ezjsonm))
+   (eio (>= 0.5))
+   (jsonm :with-test) ; Needed for benchmarks
+   (eio_main :with-test)
+   hex
+   sexplib0))
 
 (using mdx 0.1)
