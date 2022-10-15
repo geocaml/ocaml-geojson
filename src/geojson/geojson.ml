@@ -318,10 +318,11 @@ module Make (J : Intf.Json) = struct
       geometry : Geometry.t option;
       properties : json option;
       foreign_members : (string * json) list;
+      id : [ `String of string | `Float of float ] option;
     }
 
-    let v ?properties ?(foreign_members = []) geo =
-      { geometry = Some geo; properties; foreign_members }
+    let v ?id ?properties ?(foreign_members = []) geo =
+      { geometry = Some geo; properties; foreign_members; id }
 
     let geometry t = t.geometry
     let properties t = t.properties
@@ -333,6 +334,18 @@ module Make (J : Intf.Json) = struct
           List.filter (fun (k, _v) -> not (List.mem k keys_in_use)) assoc
       | Error _ -> []
 
+    let id_of_json = function
+      | Some json -> (
+          match J.to_string json with
+          | Ok s -> Ok (Some (`String s))
+          | _ -> (
+              match J.to_float json with
+              | Ok f -> Ok (Some (`Float f))
+              | _ -> Error (`Msg "Identifier is not a string or number")))
+      | None -> Ok None
+
+    let id_to_json = function `String s -> J.string s | `Float f -> J.float f
+
     let base_of_json json =
       match J.find json [ "type" ] with
       | Some typ -> (
@@ -340,19 +353,26 @@ module Make (J : Intf.Json) = struct
           | Ok "Feature" -> (
               let fm = foreign_members json in
               match
-                (J.find json [ "geometry" ], J.find json [ "properties" ])
+                ( J.find json [ "geometry" ],
+                  J.find json [ "properties" ],
+                  J.find json [ "id" ] )
               with
-              | Some geometry, properties ->
+              | Some geometry, properties, id ->
+                  Result.bind (id_of_json id) (fun id ->
+                      Result.map
+                        (fun v ->
+                          {
+                            geometry = Option.some v;
+                            properties;
+                            foreign_members = fm;
+                            id;
+                          })
+                        (Geometry.base_of_json geometry))
+              | None, properties, id ->
                   Result.map
-                    (fun v ->
-                      {
-                        geometry = Option.some v;
-                        properties;
-                        foreign_members = fm;
-                      })
-                    (Geometry.base_of_json geometry)
-              | None, properties ->
-                  Ok { geometry = None; properties; foreign_members = fm })
+                    (fun id ->
+                      { geometry = None; properties; foreign_members = fm; id })
+                    (id_of_json id))
           | Ok s ->
               Error
                 (`Msg
@@ -366,18 +386,19 @@ module Make (J : Intf.Json) = struct
               "A Geojson feature requires the type `Feature`. No type was \
                found.")
 
-    let to_json ?bbox { geometry; properties; foreign_members } =
+    let to_json ?bbox { geometry; properties; foreign_members; id } =
       J.obj
-        ([
-           ("type", J.string "Feature");
-           ( "geometry",
-             Option.(value ~default:J.null @@ map Geometry.to_json geometry) );
-           ("properties", Option.(value ~default:J.null properties));
-         ]
+        ([ ("type", J.string "Feature") ]
+        @ (match geometry with
+          | Some p -> [ ("geometry", Geometry.to_json p) ]
+          | None -> [])
+        @ (match properties with Some p -> [ ("properties", p) ] | None -> [])
+        @ (match id with Some s -> [ ("id", id_to_json s) ] | None -> [])
         @ bbox_to_json_or_empty bbox
         @ foreign_members)
 
     let foreign_members t = t.foreign_members
+    let id t = t.id
 
     module Collection = struct
       type feature = t
@@ -628,7 +649,7 @@ module Make (J : Intf.Json) = struct
         | G g -> { geojson = Geometry (random_g g); bbox = None }
       and random_f { properties; geometry } =
         let geo = random_g geometry in
-        { geometry = Some geo; properties; foreign_members = [] }
+        { geometry = Some geo; properties; foreign_members = []; id = None }
       and random_g = function
         | Point -> (Geometry.Point (random_point ()), [])
         | MultiPoint i ->

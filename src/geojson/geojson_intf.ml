@@ -231,7 +231,11 @@ module type S = sig
     (** [foreign_members t] will extract name/value pair of a foreign member
         from t (a GeoJSON object) *)
 
+    val id : t -> [ `String of string | `Float of float ] option
+    (** [id f] extracts the identifier for the feature if it exists. *)
+
     val v :
+      ?id:[ `String of string | `Float of float ] ->
       ?properties:json ->
       ?foreign_members:(string * json) list ->
       Geometry.t ->
