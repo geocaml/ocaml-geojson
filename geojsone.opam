@@ -6,7 +6,7 @@ description:
 maintainer: ["patrick@sirref.org"]
 authors: ["Patrick Ferris"]
 license: "MIT"
-tags: ["geojson" "geospatial" "gis"]
+tags: ["geojson" "geospatial" "geocaml"]
 homepage: "https://github.com/geocaml/ocaml-geojson"
 bug-reports: "https://github.com/geocaml/ocaml-geojson/issues"
 depends: [
