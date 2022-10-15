@@ -105,7 +105,7 @@ val iter_props : (Ezjsone.value -> unit) -> Jsone.src -> (unit, Err.t) result
 
 (** {2 Effect-based, non-blocking libraries}
 
-    These libraries using effects to perform non-blocking parsing. They are
+    These libraries use effects to perform non-blocking parsing. They are
     currently a part of Geojsone and exposed for other libraries to use. *)
 
 module Ezjsone = Ezjsone

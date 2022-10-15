@@ -13,9 +13,7 @@
    DEALINGS IN THE SOFTWARE.
 *)
 
-(** {2 Json}
-
-    The GeoJSON library does not force you to use a particular JSON parsing
+(** The GeoJSON library does not force you to use a particular JSON parsing
     library. You must provide one. See the tests and benchmarks for an [Ezjsone]
     parser and one for JS using [Brr]'s [Jv] library. *)
 module type Json = sig
@@ -215,10 +213,12 @@ end
 
 module type S = sig
   type json
-  (** The internal representation of JSON *)
+  (** The internal representation of a JSON value. *)
 
   module Geometry : Geometry with type json = json
+  (** Geometries *)
 
+  (** Features which contain a geometry *)
   module Feature : sig
     type t
     (** A feature object is a geojson object with optional geometry and
@@ -261,9 +261,13 @@ module type S = sig
   type geojson =
     | Feature of Feature.t
     | FeatureCollection of Feature.Collection.t
-    | Geometry of Geometry.t  (** A geojson object *)
+    | Geometry of Geometry.t
+
+  (** A {!geojson} object which could be a geometry, a feature or a collection
+      of features. *)
 
   type t
+  (** The type for GeoJSON objects. *)
 
   val geojson : t -> geojson
   (** [geojson t] will extract geojson value from t (a GeoJSON object) *)
