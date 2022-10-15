@@ -1,4 +1,4 @@
-(* Copyright (c) 2021 Patrick Ferris <patrick@sirref.org>
+(* Copyright (c) 2021-2022 Patrick Ferris <patrick@sirref.org>
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

@@ -1,4 +1,4 @@
-(* Copyright (c) 2021 Patrick Ferris <patrick@sirref.org>
+(* Copyright (c) 2021-2022 Patrick Ferris <patrick@sirref.org>
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above
@@ -309,6 +309,8 @@ module Make (J : Intf.Json) = struct
             @ foreign_members)
 
     let foreign_members (_, fm) = fm
+    let geometry (g, _) = g
+    let v ?(foreign_members = []) g = (g, foreign_members)
   end
 
   module Feature = struct
@@ -493,6 +495,113 @@ module Make (J : Intf.Json) = struct
     | { geojson = FeatureCollection fc; bbox } ->
         Feature.Collection.to_json ?bbox fc
     | { geojson = Geometry g; bbox } -> Geometry.to_json ?bbox g
+
+  module Accessor = struct
+    module Optics = Optics
+    include Optics.Infix
+
+    let get = Optics.Lens.get
+
+    let geojson =
+      Optics.Lens.V
+        ((fun t -> (t.geojson, t)), fun (geojson, t) -> { t with geojson })
+
+    let bbox =
+      Optics.Lens.V ((fun t -> (t.bbox, t)), fun (bbox, t) -> { t with bbox })
+
+    let feature =
+      let into = function
+        | Feature f -> Ok f
+        | v ->
+            ignore (failwith "Big yikes");
+            Error v
+      in
+      let out_of = function Ok f -> Feature f | Error v -> v in
+      Optics.Prism.V (into, out_of)
+
+    let feature_collection =
+      let into = function FeatureCollection f -> Ok f | v -> Error v in
+      let out_of = function Ok f -> FeatureCollection f | Error v -> v in
+      Optics.Prism.V (into, out_of)
+
+    let geometry =
+      let into = function Geometry f -> Ok f | v -> Error v in
+      let out_of = function Ok f -> Geometry f | Error v -> v in
+      Optics.Prism.V (into, out_of)
+
+    module Feature = struct
+      let properties =
+        Optics.Lens.V
+          ( (fun t -> (t.Feature.properties, t)),
+            fun (properties, t) -> { t with properties } )
+
+      let foreign_members =
+        Optics.Lens.V
+          ( (fun t -> (t.Feature.foreign_members, t)),
+            fun (foreign_members, t) -> { t with foreign_members } )
+
+      let geometry =
+        Optics.Lens.V
+          ( (fun t -> (t.Feature.geometry, t)),
+            fun (geometry, t) -> { t with geometry } )
+
+      let geometry_exn =
+        Optics.Lens.V
+          ( (fun t -> (Option.get t.Feature.geometry, t)),
+            fun (geometry, t) -> { t with geometry = Some geometry } )
+    end
+
+    module Geometry = struct
+      let geometry : (Geometry.t, Geometry.geometry) Optics.Lens.t =
+        Optics.Lens.fst
+
+      let foreign_members : (Geometry.t, (string * json) list) Optics.Lens.t =
+        Optics.Lens.snd
+
+      let point : (Geometry.geometry, Geometry.Point.t) Optics.Prism.t =
+        let into = function Geometry.Point f -> Ok f | v -> Error v in
+        let out_of = function Ok f -> Geometry.Point f | Error v -> v in
+        Optics.Prism.V (into, out_of)
+
+      let multipoint : (Geometry.geometry, Geometry.MultiPoint.t) Optics.Prism.t
+          =
+        let into = function Geometry.MultiPoint f -> Ok f | v -> Error v in
+        let out_of = function Ok f -> Geometry.MultiPoint f | Error v -> v in
+        Optics.Prism.V (into, out_of)
+
+      let linestring : (Geometry.geometry, Geometry.LineString.t) Optics.Prism.t
+          =
+        let into = function Geometry.LineString f -> Ok f | v -> Error v in
+        let out_of = function Ok f -> Geometry.LineString f | Error v -> v in
+        Optics.Prism.V (into, out_of)
+
+      let multilinestring :
+          (Geometry.geometry, Geometry.MultiLineString.t) Optics.Prism.t =
+        let into = function
+          | Geometry.MultiLineString f -> Ok f
+          | v -> Error v
+        in
+        let out_of = function
+          | Ok f -> Geometry.MultiLineString f
+          | Error v -> v
+        in
+        Optics.Prism.V (into, out_of)
+
+      let polygon : (Geometry.geometry, Geometry.Polygon.t) Optics.Prism.t =
+        let into = function Geometry.Polygon f -> Ok f | v -> Error v in
+        let out_of = function Ok f -> Geometry.Polygon f | Error v -> v in
+        Optics.Prism.V (into, out_of)
+
+      let multipolygon :
+          (Geometry.geometry, Geometry.MultiPolygon.t) Optics.Prism.t =
+        let into = function Geometry.MultiPolygon f -> Ok f | v -> Error v in
+        let out_of = function
+          | Ok f -> Geometry.MultiPolygon f
+          | Error v -> v
+        in
+        Optics.Prism.V (into, out_of)
+    end
+  end
 
   module Random = struct
     type geometry =

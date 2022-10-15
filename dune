@@ -1,0 +1,4 @@
+(mdx
+ (files README.md)
+ (packages geojsone)
+ (preludes ./test/prelude.txt))

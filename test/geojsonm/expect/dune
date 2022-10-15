@@ -1,5 +1,6 @@
 (tests
  (names test test_iters)
+ (package geojsone)
  (deps
   (source_tree input))
  (libraries eio_main geojsone))
