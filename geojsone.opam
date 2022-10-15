@@ -12,6 +12,7 @@ bug-reports: "https://github.com/geocaml/ocaml-geojson/issues"
 depends: [
   "dune" {>= "2.9"}
   "geojson" {= version}
+  "mdx" {with-test}
   "eio" {>= "0.5"}
   "jsonm" {with-test}
   "eio_main" {with-test}

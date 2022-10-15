@@ -20,6 +20,7 @@
  (description "GeoJSON is a 'schema' for JSON to describe geospatial information. This library provides a JSON-parser-agnostic library for manipulating and parsing GeoJSON into OCaml.")
  (depends
    (bos :with-test)
+   (mdx :with-test)
    (alcotest :with-test)
    (ezjsonm :with-test)))
 
@@ -30,6 +31,7 @@
  (description "A library for manipulating GeoJSON using a streaming parser. This is useful because GeoJSON can be gigabytes in size.")
  (depends
    (geojson (= :version))
+   (mdx :with-test)
    (eio (>= 0.5))
    (jsonm :with-test) ; Needed for benchmarks
    (eio_main :with-test)
