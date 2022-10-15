@@ -1,5 +1,6 @@
 (test
  (name test)
+ (package geojson)
  (deps
   (source_tree files))
- (libraries alcotest geojsone geojson))
+ (libraries alcotest ezjsonm geojson))

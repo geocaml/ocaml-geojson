@@ -1,4 +1,4 @@
-(* Copyright (c) 2021 Patrick Ferris <patrick@sirref.org>
+(* Copyright (c) 2021-2022 Patrick Ferris <patrick@sirref.org>
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,7 @@
 
 (** {2 Json}
 
-    The GeoJson library does not force you to use a particular JSON parsing
+    The GeoJSON library does not force you to use a particular JSON parsing
     library. You must provide one. See the tests and benchmarks for an [Ezjsone]
     parser and one for JS using [Brr]'s [Jv] library. *)
 module type Json = sig
@@ -23,6 +23,7 @@ module type Json = sig
   (** The type your parser uses to represent a parsed JSON object. *)
 
   val find : t -> string list -> t option
+  (** Recursively find keys in nested objects. *)
 
   val to_string : t -> (string, [ `Msg of string ]) result
   (** Convert the JSON to a string. *)
@@ -68,22 +69,16 @@ module type Json = sig
   (** Test for null *)
 end
 
-(* {2 Json Conversion} *)
+(** {2 GeoJSON Geometry Objects}
 
-module type Json_conv = sig
-  type t
-  type json
-end
-
-(** {2 GeoJson Geometry Objects}
-
-    The basic primitives for building geometrical shapes in GeoJson. *)
+    The basic primitives for building geometrical shapes in GeoJSON. *)
 
 module type Geometry = sig
   type json
+  (** A type to represt JSON values. *)
 
   module Position : sig
-    type t
+    type t = float array
     (** A position - a longitude and latitude with an optional altitude *)
 
     val lng : t -> float
@@ -206,13 +201,16 @@ module type Geometry = sig
     | MultiPolygon of MultiPolygon.t
     | Collection of t list
 
-  and t = geometry * (string * json) list
+  and t
 
   val foreign_members : t -> (string * json) list
   (** [foreign_members t] will extract name/value pair of a foreign member from
       t (a GeoJSON object) *)
 
-  include Json_conv with type t := t and type json := json
+  val geometry : t -> geometry
+  (** [geometry t] will extract the underlying geometry. *)
+
+  val v : ?foreign_members:(string * json) list -> geometry -> t
 end
 
 module type S = sig
@@ -232,8 +230,6 @@ module type S = sig
     val foreign_members : t -> (string * json) list
     (** [foreign_members t] will extract name/value pair of a foreign member
         from t (a GeoJSON object) *)
-
-    include Json_conv with type t := t and type json := json
 
     val v :
       ?properties:json ->
@@ -255,8 +251,6 @@ module type S = sig
       val foreign_members : t -> (string * json) list
       (** [foreign_members t] will extract name/value pair of a foreign member
           from t (a GeoJSON object) *)
-
-      include Json_conv with type t := t and type json := json
     end
   end
 
@@ -284,6 +278,87 @@ module type S = sig
   val to_json : t -> json
   (** [to_json g] converts the GeoJSON object [g] to JSON *)
 
+  module Accessor : sig
+    module Optics = Optics
+
+    (** The accessor module uses optics to allow users to build reusable values
+        that can be used to get values deeply nested in GeoJSON values. Bare in
+        mind if you care more about performance and/or memory footprint, you are
+        probably better off writing pattern-matching statements by hand than
+        using accessors.*)
+
+    val get : ('a, 'b) Optics.Lens.t -> 'a -> 'b
+    (** [get lens v] focuses onto the field in [lens] for the value [v]. *)
+
+    val geojson : (t, geojson) Optics.Lens.t
+    (** A lens for focusing on the [geojson] value. *)
+
+    val bbox : (t, float array option) Optics.Lens.t
+    (** A lens for focusing on the bounding box if any. *)
+
+    val feature : (geojson, Feature.t) Optics.Prism.t
+    (** A prism for matching on a feature. *)
+
+    val geometry : (geojson, Geometry.t) Optics.Prism.t
+    (** A prism for matching on a geometry. *)
+
+    val feature_collection : (geojson, Feature.Collection.t) Optics.Prism.t
+    (** A prism for matching on a feature collection. *)
+
+    module Feature : sig
+      val properties : (Feature.t, json option) Optics.Lens.t
+      (** A lens for focusing on the properties if any. *)
+
+      val foreign_members : (Feature.t, (string * json) list) Optics.Lens.t
+      (** A lens for focusing on the foreign members if any. *)
+
+      val geometry : (Feature.t, Geometry.t option) Optics.Lens.t
+      (** A lens for focusing on the feature's geometry if any. *)
+
+      val geometry_exn : (Feature.t, Geometry.t) Optics.Lens.t
+      (** Like {!geometry} except using [Option.get] internally. *)
+    end
+
+    module Geometry : sig
+      val geometry : (Geometry.t, Geometry.geometry) Optics.Lens.t
+      (** A lens for focusing on the geometry value. *)
+
+      val foreign_members : (Geometry.t, (string * json) list) Optics.Lens.t
+      (** A lens for focusing on the possibly empty foreign members. *)
+
+      (** {3 Prisms for Geometries} *)
+
+      val point : (Geometry.geometry, Geometry.Point.t) Optics.Prism.t
+      val multipoint : (Geometry.geometry, Geometry.MultiPoint.t) Optics.Prism.t
+      val linestring : (Geometry.geometry, Geometry.LineString.t) Optics.Prism.t
+
+      val multilinestring :
+        (Geometry.geometry, Geometry.MultiLineString.t) Optics.Prism.t
+
+      val polygon : (Geometry.geometry, Geometry.Polygon.t) Optics.Prism.t
+
+      val multipolygon :
+        (Geometry.geometry, Geometry.MultiPolygon.t) Optics.Prism.t
+    end
+
+    (** {3 Infix Operators}
+
+        These operators allow you to combine lenses and prisms into more
+        complicated lenses and prisms.*)
+
+    open Optics
+
+    val ( >> ) :
+      ('a, 'b) Optional.t -> ('b, 'c) Optional.t -> ('a, 'c) Optional.t
+
+    val ( &> ) : ('a, 'b) Optional.t -> ('b, 'c) Lens.t -> ('a, 'c) Optional.t
+    val ( $> ) : ('a, 'b) Optional.t -> ('b, 'c) Prism.t -> ('a, 'c) Optional.t
+    val ( >& ) : ('a, 'b) Lens.t -> ('b, 'c) Prism.t -> ('a, 'c) Optional.t
+    val ( >$ ) : ('a, 'b) Prism.t -> ('b, 'c) Lens.t -> ('a, 'c) Optional.t
+    val ( & ) : ('a, 'b) Lens.t -> ('b, 'c) Lens.t -> ('a, 'c) Lens.t
+    val ( $ ) : ('a, 'b) Prism.t -> ('b, 'c) Prism.t -> ('a, 'c) Prism.t
+  end
+
   module Random : sig
     type geometry =
       | Point
@@ -300,8 +375,8 @@ module type S = sig
     (** {3 Generate random geojson}
 
         The random module provides a way of quickly constructing random, correct
-        GeoJson. You provide the skeleton of the document using type {!t} and
-        tweaking some of the parameters. For example:
+        GeoJSON objects. You provide the skeleton of the document using type
+        {!t} and tweaking some of the parameters. For example:
 
         [{
           let random_structure = 
@@ -309,21 +384,21 @@ module type S = sig
         }]*)
 
     val random : f:(unit -> float) -> r -> t
-    (** [random ~f r] produces random GeoJson based on the structure provided by
+    (** [random ~f r] produces random GeoJSON based on the structure provided by
         [r] and using the random float generator [f]. Note the random geometry
-        maker will follow the rules of GeoJson (for making Polygons for
+        maker will follow the rules of GeoJSON (for making Polygons for
         example). *)
   end
 end
 
 module type Geojson = sig
   module type S = S
-  (** Types for Geojson texts and objects *)
+  (** Types for GeoJSON texts and objects *)
 
   module type Json = Json
   (** Types for the JSON parser *)
 
-  (** A functor that takes a Json parsing implementation and returns a GeoJson
+  (** A functor that takes a JSON parsing implementation and returns a GeoJSON
       parser and constructor. *)
   module Make (J : Json) : S with type json = J.t
 end

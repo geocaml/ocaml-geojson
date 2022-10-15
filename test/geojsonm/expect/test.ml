@@ -9,9 +9,10 @@ let capitalise_nom obj =
 
 let remove_all_coords t =
   let open Geojsone in
-  match t with
-  | G.Geometry.Polygon _, fm -> G.Geometry.(Polygon (Polygon.v [||]), fm)
-  | t -> t
+  match (G.Geometry.geometry t, G.Geometry.foreign_members t) with
+  | G.Geometry.Polygon _, fm ->
+      G.Geometry.(v ~foreign_members:fm (Polygon (Polygon.v [||])))
+  | _ -> t
 
 let get_string_exn = function `String s -> s | _ -> failwith "err"
 

@@ -1,0 +1,39 @@
+#require "geojson";;
+#require "ezjsonm";;
+#require "geojsone";;
+module Ezjsonm_parser = struct
+  type t = Ezjsonm.value
+
+  let catch_err f v =
+    try Ok (f v) with Ezjsonm.Parse_error (_, s) -> Error (`Msg s)
+
+  let find = Ezjsonm.find_opt
+  let to_string t = catch_err Ezjsonm.get_string t
+  let string = Ezjsonm.string
+  let to_float t = catch_err Ezjsonm.get_float t
+  let float = Ezjsonm.float
+  let to_int t = catch_err Ezjsonm.get_int t
+  let int = Ezjsonm.int
+  let to_list f t = catch_err (Ezjsonm.get_list f) t
+  let list f t = Ezjsonm.list f t
+  let to_array f t = Result.map Array.of_list @@ to_list f t
+  let array f t = list f (Array.to_list t)
+  let to_obj t = catch_err Ezjsonm.get_dict t
+  let obj = Ezjsonm.dict
+  let null = `Null
+  let is_null = function `Null -> true | _ -> false
+end
+
+let feature_example = {|
+{
+  "type": "Feature",
+  "geometry": {
+      "type": "MultiPoint",
+      "coordinates": [[125.1, 40.0], [155.9, 22.5]]
+  },
+  "properties": {
+      "name": "Dinagat Islands"
+  },
+  "title": "Some Islands"
+}
+|}
