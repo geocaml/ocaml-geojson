@@ -61,6 +61,13 @@ module Prism = struct
       ( (function None -> Ok () | Some t -> Error t),
         function Ok () -> None | Error t -> Some t )
 
+  module Either = struct
+    type ('a, 'b) t = Left of 'a | Right of 'b
+
+    let left a = Left a
+    let right b = Right b
+  end
+
   let ( >> ) (type a b c) (V (f, g) : (a, b) t) (V (f', g') : (b, c) t) :
       (a, c) t =
     let first x =

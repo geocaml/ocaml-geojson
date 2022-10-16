@@ -17,8 +17,6 @@ module Intf = Geojson_intf
 module type S = Geojson_intf.S
 module type Json = Geojson_intf.Json
 
-let ( let* ) = Result.bind
-
 let decode_or_err f v =
   match f v with Ok x -> x | Error (`Msg m) -> failwith m
 
@@ -79,7 +77,7 @@ module Make (J : Intf.Json) = struct
               ^ typ))
       | _, None -> Error (`Msg "JSON should have a key-value for `coordinates'")
       | Some typ, Some coords -> (
-          let* typ = J.to_string typ in
+          Result.bind (J.to_string typ) @@ fun typ ->
           match typ with
           | t when t = typ -> p_c coords
           | t -> Error (`Msg ("Expected type of `" ^ typ ^ "' but got " ^ t)))
@@ -133,9 +131,9 @@ module Make (J : Intf.Json) = struct
       let v = Fun.id
 
       let parse_coords coords =
-        let* arr =
-          try MultiPoint.parse_coords coords with Failure m -> Error (`Msg m)
-        in
+        Result.bind
+          (try MultiPoint.parse_coords coords with Failure m -> Error (`Msg m))
+        @@ fun arr ->
         if Array.length arr < 2 then
           Error (`Msg "LineStrings should have two or more points")
         else Ok arr

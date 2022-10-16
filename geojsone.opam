@@ -14,7 +14,7 @@ depends: [
   "geojson" {= version}
   "mdx" {with-test}
   "eio" {>= "0.5"}
-  "jsonm" {with-test}
+  "ezjsonm" {with-test}
   "eio_main" {with-test}
   "hex"
   "sexplib0"

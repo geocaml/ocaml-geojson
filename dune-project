@@ -33,7 +33,7 @@
    (geojson (= :version))
    (mdx :with-test)
    (eio (>= 0.5))
-   (jsonm :with-test) ; Needed for benchmarks
+   (ezjsonm :with-test) ; Needed for benchmarks
    (eio_main :with-test)
    hex
    sexplib0))
