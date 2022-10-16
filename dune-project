@@ -32,9 +32,8 @@
  (depends
    (geojson (= :version))
    (mdx :with-test)
-   (eio (>= 0.5))
    (ezjsonm :with-test) ; Needed for benchmarks
-   (eio_main :with-test)
+   (eio_main (and (>= 0.6) :with-test))
    hex
    sexplib0))
 

@@ -13,9 +13,8 @@ depends: [
   "dune" {>= "2.9"}
   "geojson" {= version}
   "mdx" {with-test}
-  "eio" {>= "0.5"}
   "ezjsonm" {with-test}
-  "eio_main" {with-test}
+  "eio_main" {>= "0.6" & with-test}
   "hex"
   "sexplib0"
   "odoc" {with-doc}
