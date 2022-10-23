@@ -34,6 +34,7 @@
    (mdx :with-test)
    (ezjsonm :with-test) ; Needed for benchmarks
    (eio_main (and (>= 0.6) :with-test))
+   (eio (>= 0.6))
    hex
    sexplib0))
 
