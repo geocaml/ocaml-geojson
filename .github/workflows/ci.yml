@@ -28,6 +28,7 @@ jobs:
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          opam-local-packages: geojson.opam
 
       - run: opam install geojson.dev . --deps-only --with-test
 
