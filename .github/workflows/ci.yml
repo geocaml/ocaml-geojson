@@ -30,6 +30,6 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-local-packages: geojson.opam
 
-      - run: opam install geojson.dev . --deps-only --with-test
+      - run: opam install geojson.dev --deps-only --with-test
 
       - run: opam exec -- dune build -p geojson @install @runtest @check
