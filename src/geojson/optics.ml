@@ -20,7 +20,6 @@ module Lens = struct
     g (v, r)
 
   let id x = x
-
   let fst : ('a * 'b, 'a) t = V (id, id)
   let snd : ('a * 'b, 'b) t = V ((fun (a, b) -> (b, a)), fun (b, a) -> (a, b))
 
