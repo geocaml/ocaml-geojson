@@ -19,6 +19,7 @@
  (tags ("geojson" "geospatial" "geocaml"))
  (description "GeoJSON is a 'schema' for JSON to describe geospatial information. This library provides a JSON-parser-agnostic library for manipulating and parsing GeoJSON into OCaml.")
  (depends
+   (ocaml (>= 4.08.0))
    (bos :with-test)
    (mdx :with-test)
    (alcotest :with-test)
@@ -34,6 +35,7 @@
    (mdx :with-test)
    (ezjsonm :with-test) ; Needed for benchmarks
    (eio_main (and (>= 0.6) :with-test))
+   (eio (>= 0.6))
    hex
    sexplib0))
 

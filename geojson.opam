@@ -11,6 +11,7 @@ homepage: "https://github.com/geocaml/ocaml-geojson"
 bug-reports: "https://github.com/geocaml/ocaml-geojson/issues"
 depends: [
   "dune" {>= "2.9"}
+  "ocaml" {>= "4.08.0"}
   "bos" {with-test}
   "mdx" {with-test}
   "alcotest" {with-test}

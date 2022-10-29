@@ -2,6 +2,13 @@ let undefined _ =
   let exception Undefined in
   raise Undefined
 
+module Either = struct
+  type ('a, 'b) t = Left of 'a | Right of 'b
+
+  let left a = Left a
+  let right b = Right b
+end
+
 module Lens = struct
   type ('s, 'a) t = V : ('s -> 'a * 'r) * ('a * 'r -> 's) -> ('s, 'a) t
 
@@ -12,7 +19,8 @@ module Lens = struct
     let _, r = f t in
     g (v, r)
 
-  let fst : ('a * 'b, 'a) t = V (Fun.id, Fun.id)
+  let id x = x
+  let fst : ('a * 'b, 'a) t = V (id, id)
   let snd : ('a * 'b, 'b) t = V ((fun (a, b) -> (b, a)), fun (b, a) -> (a, b))
 
   let head : ('a list, 'a) t =
@@ -60,13 +68,6 @@ module Prism = struct
     V
       ( (function None -> Ok () | Some t -> Error t),
         function Ok () -> None | Error t -> Some t )
-
-  module Either = struct
-    type ('a, 'b) t = Left of 'a | Right of 'b
-
-    let left a = Left a
-    let right b = Right b
-  end
 
   let ( >> ) (type a b c) (V (f, g) : (a, b) t) (V (f', g') : (b, c) t) :
       (a, c) t =
