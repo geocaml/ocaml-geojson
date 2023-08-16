@@ -6,7 +6,7 @@ let print_property prop = print_endline @@ Geojsone.Ezjsone.value_to_string prop
 let src_of_flow flow =
   let buff = Cstruct.create 2048 in
   fun () ->
-    let got = Eio.Flow.(read flow buff) in
+    let got = Eio.Flow.(single_read flow buff) in
     let t = Cstruct.sub buff 0 got in
     t
 

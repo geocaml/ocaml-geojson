@@ -198,7 +198,7 @@ let src_of_string str =
   let buff = Cstruct.create (String.length str) in
   let src = Flow.string_source str in
   fun () ->
-    let got = Flow.(read src buff) in
+    let got = Flow.(single_read src buff) in
     let t = Cstruct.sub buff 0 got in
     t
 
