@@ -135,16 +135,15 @@ val buffer_to_dst : Buffer.t -> Cstruct.t -> unit = <fun>
 For reading, we can turn an arbitrary Eio `Flow.t` into a source. A `Flow.t` is a byte-stream so a file, a socket etc.
 
 ```ocaml
-# let src_of_flow flow =
+let src_of_flow flow =
   let buff = Cstruct.create 2048 in
   fun () ->
-    let got = Eio.Flow.(read flow buff) in
+    let got = Eio.Flow.(single_read flow buff) in
     let t = Cstruct.sub buff 0 got in
-    t;;
-val src_of_flow : #Eio.Flow.source -> unit -> Cstruct.t = <fun>
+    t
 ```
 
-Note that your source function should raise `End_of_file` when there are no more bytes to be read. `Eio.Flow.read` does this.
+Note that your source function should raise `End_of_file` when there are no more bytes to be read. `Eio.Flow.single_read` does this.
 
 With both of these we can now construct an encoder and decoder.
 

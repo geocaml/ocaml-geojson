@@ -19,7 +19,7 @@ let read_write decode encode =
 let src_of_flow flow =
   let buff = Cstruct.create 65536 in
   fun () ->
-    let got = Eio.Flow.(read flow buff) in
+    let got = Eio.Flow.(single_read flow buff) in
     let t = Cstruct.sub buff 0 got in
     t
 
