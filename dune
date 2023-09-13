@@ -1,5 +1,5 @@
 (mdx
  (files README.md)
  (package geojsone)
- (libraries eio)
+ (libraries eio geojsone.eio)
  (preludes ./test/prelude.txt))

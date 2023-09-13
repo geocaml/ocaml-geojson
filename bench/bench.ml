@@ -16,18 +16,6 @@ let read_write decode encode =
   in
   loop ()
 
-let src_of_flow flow =
-  let buff = Cstruct.create 65536 in
-  fun () ->
-    let got = Eio.Flow.(single_read flow buff) in
-    let t = Cstruct.sub buff 0 got in
-    t
-
-let dst_of_flow flow b =
-  match b with
-  | bs -> Eio.Flow.(copy (cstruct_source [ bs ]) flow)
-  | exception End_of_file -> ()
-
 let run_test_effects ~file ~out =
   Eio.Path.with_open_in file @@ fun in_flow ->
   Eio.Path.with_open_out ~create:(`If_missing 0o666) out @@ fun out_flow ->
