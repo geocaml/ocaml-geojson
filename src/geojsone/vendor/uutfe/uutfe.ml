@@ -18,7 +18,7 @@ let unsafe_chr = Char.unsafe_chr
 
 external blit : Cstruct.buffer -> int -> Cstruct.buffer -> int -> int -> unit
   = "caml_blit_bigstring_to_bigstring"
-  [@@noalloc]
+[@@noalloc]
 
 let unsafe_blit s soff d doff l =
   blit s.Cstruct.buffer soff d.Cstruct.buffer doff l
@@ -961,7 +961,7 @@ let decoder ?nln ?encoding src =
   {
     src;
     encoding;
-    nln = (nln :> nln option);
+    nln :> nln option;
     nl;
     i = Cstruct.empty;
     i_pos = max_int;
@@ -1225,7 +1225,7 @@ let encoder encoding dst =
   else
     {
       dst;
-      encoding = (encoding :> encoding);
+      encoding :> encoding;
       o = buf;
       o_pos = 0;
       o_max;

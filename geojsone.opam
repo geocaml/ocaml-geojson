@@ -10,12 +10,11 @@ tags: ["geojson" "geospatial" "geocaml"]
 homepage: "https://github.com/geocaml/ocaml-geojson"
 bug-reports: "https://github.com/geocaml/ocaml-geojson/issues"
 depends: [
-  "dune" {>= "2.9"}
+  "dune" {>= "3.2"}
   "geojson" {= version}
   "mdx" {with-test}
   "ezjsonm" {with-test}
   "eio_main" {>= "0.6" & with-test}
-  "eio" {>= "0.6"}
   "hex"
   "sexplib0"
   "odoc" {with-doc}
@@ -29,11 +28,9 @@ build: [
     name
     "-j"
     jobs
-    "--promote-install-files=false"
     "@install"
     "@runtest" {with-test}
     "@doc" {with-doc}
   ]
-  ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/geocaml/ocaml-geojson.git"

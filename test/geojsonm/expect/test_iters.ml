@@ -1,7 +1,18 @@
-let print_geometry g =
-  print_endline @@ Geojsone.Ezjsone.value_to_string (Geojsone.G.to_json g)
+open Eio
 
-let print_property prop = print_endline @@ Geojsone.Ezjsone.value_to_string prop
+let buffer_to_dst buf bs =
+  Flow.(copy (cstruct_source [ bs ]) (Flow.buffer_sink buf))
+
+let value_to_buffer ?minify buf json =
+  Geojsone.Ezjsone.value_to_dst ?minify (buffer_to_dst buf) json
+
+let value_to_string ?minify json =
+  let buf = Buffer.create 1024 in
+  value_to_buffer ?minify buf json;
+  Buffer.contents buf
+
+let print_geometry g = print_endline @@ value_to_string (Geojsone.G.to_json g)
+let print_property prop = print_endline @@ value_to_string prop
 
 let src_of_flow flow =
   let buff = Cstruct.create 2048 in
