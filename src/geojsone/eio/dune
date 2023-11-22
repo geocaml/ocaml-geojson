@@ -1,0 +1,7 @@
+(library
+ (name geojsone_eio)
+ (public_name geojsone.eio)
+ (optional)
+ (libraries geojsone eio))
+
+(include_subdirs no)

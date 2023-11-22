@@ -13,7 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-open Eio
 
 (* From http://erratique.ch/software/jsonm/doc/Jsone.html#datamodel *)
 type value =
@@ -142,26 +141,6 @@ let value_to_dst ?(minify = true) dst json =
   value json e Stack.Empty;
   ignore (Jsone.encode e `End)
 
-let buffer_to_dst buf bs =
-  Flow.(copy (cstruct_source [ bs ]) (Flow.buffer_sink buf))
-
-let value_to_buffer ?minify buf json =
-  value_to_dst ?minify (buffer_to_dst buf) json
-
-let to_buffer ?minify buf json = value_to_buffer ?minify buf (json :> value)
-
-let value_to_string ?minify json =
-  let buf = Buffer.create 1024 in
-  value_to_buffer ?minify buf json;
-  Buffer.contents buf
-
-let to_string ?minify json = value_to_string ?minify (json :> value)
-
-(* let value_to_channel ?minify oc json =
-     value_to_dst ?minify (`Channel oc) json
-
-   let to_channel ?minify oc json = value_to_channel ?minify oc (json :> value) *)
-
 exception Parse_error of value * string
 
 let parse_error t fmt =
@@ -194,20 +173,6 @@ let value_from_src src =
   | Ok t -> t
   | Error e -> parse_error `Null "JSON.of_buffer %s" (read_error_description e)
 
-let src_of_string str =
-  let buff = Cstruct.create (String.length str) in
-  let src = Flow.string_source str in
-  fun () ->
-    let got = Flow.(single_read src buff) in
-    let t = Cstruct.sub buff 0 got in
-    t
-
-let value_from_string_result str = value_from_src_result (src_of_string str)
-let value_from_string str = value_from_src (src_of_string str)
-
-(* let value_from_channel_result chan = value_from_src_result (`Channel chan) *)
-(* let value_from_channel chan = value_from_src (`Channel chan) *)
-
 let ensure_document_result : [> value ] -> ([> t ], [> read_error ]) result =
   function
   | #t as t -> Ok t
@@ -216,14 +181,6 @@ let ensure_document_result : [> value ] -> ([> t ], [> read_error ]) result =
 let ensure_document : [> value ] -> [> t ] = function
   | #t as t -> t
   | t -> raise (Parse_error (t, "not a valid JSON array/object"))
-
-let from_string str = value_from_string str |> ensure_document
-(* let from_channel chan = value_from_channel chan |> ensure_document *)
-
-let from_string_result str =
-  Result.bind (value_from_string_result str) ensure_document_result
-(* let from_channel_result chan =
-   Result.bind (value_from_channel_result chan) ensure_document_result *)
 
 (* unit *)
 let unit () = `Null

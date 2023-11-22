@@ -1,4 +1,4 @@
-(lang dune 2.9)
+(lang dune 3.2)
 
 (name geojson)
 
@@ -35,8 +35,7 @@
    (mdx :with-test)
    (ezjsonm :with-test) ; Needed for benchmarks
    (eio_main (and (>= 0.6) :with-test))
-   (eio (>= 0.6))
    hex
    sexplib0))
 
-(using mdx 0.1)
+(using mdx 0.3)

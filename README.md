@@ -88,12 +88,12 @@ This is a lens that lets use focus all the way down from the GeoJSON object cont
 You can also construct GeoJSON objects using OCaml values.
 
 ```ocaml
-# let geometry = 
-  G.Geometry.(v 
+# let geometry =
+  G.Geometry.(v
     ~foreign_members:["hello", `String "World"]
     (Point (Point.v (Position.v ~lat:1.123 ~lng:2.321 ()))));;
 val geometry : G.Geometry.t = <abstr>
-# let g = G.(v (Geometry geometry));; 
+# let g = G.(v (Geometry geometry));;
 val g : G.t = <abstr>
 # G.to_json g |> Ezjsonm.value_to_string;;
 - : string =
@@ -102,8 +102,8 @@ val g : G.t = <abstr>
 
 ## Geojsone
 
-Geojsone is a non-blocking, streaming parser for GeoJSON objects. Currently, it 
-uses a modified version of [jsonm](http://erratique.ch/software/jsonm), called jsone. 
+Geojsone is a non-blocking, streaming parser for GeoJSON objects. Currently, it
+uses a modified version of [jsonm](http://erratique.ch/software/jsonm), called jsone.
 It uses effects to provide non-blocking reading and writing functions rather than
 passing continuations the whole way through the parser. It is still experimental.
 
@@ -122,25 +122,15 @@ These are functions for filling a buffer (a `Cstruct.t`) and reading a buffer. N
 
 #### Eio sources and sinks
 
-The API was designed around [Eio](https://github.com/ocaml-multicore/eio) although there is no explicit dependency. Here are two functions using Eio that provide Jsone sources and sinks.
-
-The first takes a buffer and turns it into a destination.
+The `geojsone.eio` sublibrary has some useful Eio-related functions for working with the `geojsone` libary.
 
 ```ocaml
-# let buffer_to_dst buf bs =
-  Eio.Flow.(copy (cstruct_source [ bs ]) (buffer_sink buf));;
-val buffer_to_dst : Buffer.t -> Cstruct.t -> unit = <fun>
-```
-
-For reading, we can turn an arbitrary Eio `Flow.t` into a source. A `Flow.t` is a byte-stream so a file, a socket etc.
-
-```ocaml
-let src_of_flow flow =
-  let buff = Cstruct.create 2048 in
-  fun () ->
-    let got = Eio.Flow.(single_read flow buff) in
-    let t = Cstruct.sub buff 0 got in
-    t
+# let src_of_flow = Geojsone_eio.src_of_flow;;
+val src_of_flow :
+  ?buff:Cstruct.t -> [> Eio.Flow.source_ty ] Eio.Std.r -> Geojsone.Jsone.src =
+  <fun>
+# let buffer_to_dst buf = Geojsone_eio.dst_of_flow (Eio.Flow.buffer_sink buf);;
+val buffer_to_dst : Buffer.t -> Geojsone.Jsone.dst = <fun>
 ```
 
 Note that your source function should raise `End_of_file` when there are no more bytes to be read. `Eio.Flow.single_read` does this.
@@ -178,7 +168,7 @@ We can then use this function for our example.
 
 ```ocaml
 # let feature_source () = src_of_flow @@ Eio.Flow.string_source feature_example;;
-val feature_source : unit -> unit -> Cstruct.t = <fun>
+val feature_source : unit -> Geojsone.Jsone.src = <fun>
 # Geojsone.(map_props capitalise_name (feature_source ()) (buffer_to_dst buf));;
 - : (unit, Geojsone.Err.t) result = Ok ()
 # Buffer.contents buf;;

@@ -1,0 +1,28 @@
+(* Copyright (c) 2021-2022 Patrick Ferris <patrick@sirref.org>
+
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+*)
+
+(** This sublibrary provides some convenient wrappers for working with GeoJSON
+    from the Eio library. *)
+
+val src_of_flow : ?buff:Cstruct.t -> _ Eio.Flow.source -> Geojsone.Jsone.src
+(** [src_of_flow ?buff flow] takes any {! Eio.Flow.source} and allows you to use
+    it as the source for reading the GeoJSON file.
+
+    You can supply a buffer that will be used to read into, by default a buffer
+    of size [4096] bytes is used.*)
+
+val dst_of_flow : _ Eio.Flow.sink -> Geojsone.Jsone.dst
+(** [src_of_flow flow] takes any {! Eio.Flow.sink} and allows you to use it as
+    the sink for writing the GeoJSON file. *)

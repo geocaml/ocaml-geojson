@@ -39,7 +39,7 @@ val map_geometry :
 (** [map_geometry f src dst] will apply [f] to all GeoJson objects. This is
     essentially any
     {{:https://datatracker.ietf.org/doc/html/rfc7946#section-3.1} geometry
-    object}.
+      object}.
 
     The map will recurse into geometry collections. Note for the moment if you
     have a single geometry object as your document, this will not work. *)

@@ -16,7 +16,7 @@ let unsafe_byte s j = Char.code (String.unsafe_get s j)
 external unsafe_blit_from_string :
   string -> int -> Cstruct.buffer -> int -> int -> unit
   = "caml_blit_string_to_bigstring"
-  [@@noalloc]
+[@@noalloc]
 
 let unsafe_blit s so c co l = unsafe_blit_from_string s so c.Cstruct.buffer co l
 

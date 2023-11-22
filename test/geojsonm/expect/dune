@@ -3,4 +3,4 @@
  (package geojsone)
  (deps
   (source_tree input))
- (libraries eio_main geojsone))
+ (libraries eio_main geojsone geojsone.eio))
